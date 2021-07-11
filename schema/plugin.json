@@ -1,0 +1,20 @@
+{
+  "jupyter.lab.shortcuts": [],
+  "title": "jupyterlab-zotero",
+  "description": "jupyterlab-zotero settings.",
+  "type": "object",
+  "properties": {
+    "server": {
+      "title": "Zotero API Server URL",
+      "type": "string",
+      "default": "https://api.zotero.org",
+      "description": "The URL to the Zotero API. It usually should remain as-is unless you need to use a proxy or a custom server."
+    },
+    "key": {
+      "title": "Zotero API key",
+      "type": "string",
+      "description": "[REQUIRED] Zotero API key that you need to generate after logging in on www.zotero.org. It looks like this: P9NiFoyLeZu2bZNvvuQPDWsd"
+    }
+  },
+  "additionalProperties": false
+}
