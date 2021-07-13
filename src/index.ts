@@ -22,6 +22,20 @@ import {
 import { ZoteroClient } from './zotero';
 import { DefaultMap } from './utils';
 
+import { LabIcon } from '@jupyterlab/ui-components';
+import addCitation from '../style/icons/book-plus.svg';
+import bibliography from '../style/icons/book-open-variant.svg';
+
+export const addCitationIcon = new LabIcon({
+  name: 'citation:add',
+  svgstr: addCitation
+});
+
+export const BibliographyIcon = new LabIcon({
+  name: 'citation:bibliography',
+  svgstr: bibliography
+});
+
 interface IModelAdapter<T extends DocumentWidget> {
   /**
    * Insert citation at current position.
@@ -97,11 +111,11 @@ class UnifiedCitationManager {
     this.providers = [];
   }
 
-  registerReferenceProvider(provider: IReferenceProvider): void {
+  public registerReferenceProvider(provider: IReferenceProvider): void {
     this.providers.push(provider);
   }
 
-  collectOptions(existingCitations: ICitation[]): ICitationOption[] {
+  private collectOptions(existingCitations: ICitation[]): ICitationOption[] {
     const options = [];
     const citationLookup = new Map<string, ICitation>();
     const citationCount = new DefaultMap<string, number>(() => 0);
@@ -185,12 +199,16 @@ class UnifiedCitationManager {
     });
     // TODO show react dialog? Jupyter dialog with custom body?
   }
+
+  addBibliography(panel: NotebookPanel) {
+    console.log('adding bibliography');
+  }
 }
 
 /**
  * A notebook widget extension that adds a button to the toolbar.
  */
-export class AddCitationButton
+export class NotebookButtons
   implements DocumentRegistry.IWidgetExtension<NotebookPanel, INotebookModel>
 {
   constructor(protected manager: UnifiedCitationManager) {}
@@ -202,18 +220,29 @@ export class AddCitationButton
     panel: NotebookPanel,
     context: DocumentRegistry.IContext<INotebookModel>
   ): IDisposable {
-    const button = new ToolbarButton({
+    const addCitationButton = new ToolbarButton({
       className: 'addCitation',
-      iconClass: 'fa fa-fast-forward',
+      icon: addCitationIcon,
       onClick: () => {
         this.manager.addCitation(panel);
       },
       tooltip: 'Add citation'
     });
 
-    panel.toolbar.insertItem(0, 'addCitation', button);
+    const addBibliographyButton = new ToolbarButton({
+      className: 'addBibliography',
+      icon: BibliographyIcon,
+      onClick: () => {
+        this.manager.addBibliography(panel);
+      },
+      tooltip: 'Add bibliography'
+    });
+
+    panel.toolbar.insertItem(10, 'addCitation', addCitationButton);
+    panel.toolbar.insertItem(11, 'addBibliography', addBibliographyButton);
     return new DisposableDelegate(() => {
-      button.dispose();
+      addCitationButton.dispose();
+      addBibliographyButton.dispose();
     });
   }
 }
@@ -237,7 +266,7 @@ const plugin: JupyterFrontEndPlugin<void> = {
 
     app.docRegistry.addWidgetExtension(
       'Notebook',
-      new AddCitationButton(manager)
+      new NotebookButtons(manager)
     );
 
     if (settingRegistry) {

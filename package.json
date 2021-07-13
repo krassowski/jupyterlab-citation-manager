@@ -56,6 +56,7 @@
     "@jupyterlab/builder": "^3.0.0",
     "@jupyterlab/docregistry": "^3.0.11",
     "@jupyterlab/notebook": "^3.0.11",
+    "@jupyterlab/ui-components": "^3.0.7",
     "@lumino/disposable": "^1.7.0",
     "@types/marked": "^2.0.4",
     "@typescript-eslint/eslint-plugin": "^4.8.1",
