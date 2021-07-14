@@ -1,4 +1,4 @@
-import { IPublication, IReferenceProvider } from './types';
+import { ICitableData, IReferenceProvider } from './types';
 import { JupyterFrontEnd } from '@jupyterlab/application';
 import { ISettingRegistry } from '@jupyterlab/settingregistry';
 import ISettings = ISettingRegistry.ISettings;
@@ -31,21 +31,21 @@ function parseLinks(links: string): Map<Rel, ILink> {
   return result;
 }
 
-
 export class ZoteroClient implements IReferenceProvider {
+  id = 'zotero';
   name = 'Zotero';
   private serverURL: string | null = null;
   private key: string | null = null;
   private user: IUser | null = null;
-  publications: IPublication[];
+  publications: Map<string, ICitableData>;
 
   constructor(app: JupyterFrontEnd, settings: ISettings) {
     settings.changed.connect(this.updateSettings, this);
     this.updateSettings(settings);
-    this.publications = [];
+    this.publications = new Map();
   }
 
-  private async fetch(endpoint: string, args: any = {}) {
+  private async fetch(endpoint: string, args: Record<string, string> = {}) {
     if (!this.key || !this.serverURL) {
       window.alert('Missing key please configure your API access key');
       return;
@@ -64,32 +64,31 @@ export class ZoteroClient implements IReferenceProvider {
   }
 
   // TODO add this as a button in the sidebar
-  public async updatePublications(): Promise<IPublication[]> {
+  public async updatePublications(): Promise<ICitableData[]> {
     // TODO implement caching 503 and rate-limiting/debouncing
     const publications = await this.loadAll(
-      'users/' + this.user?.id + '/items/top'
+      'users/' + this.user?.id + '/items',
+      'csljson',
+      'items'
     );
     console.log(publications);
-    this.publications = (publications || []).map(item => {
-      console.log(item);
-      const data = item['data'];
-      const publication: IPublication = {
-        creators: data['creators'],
-        id: data['key'],
-        title: data['title'],
-        doi: data['DOI'],
-        url: data['url']
-      };
-      return publication;
-    });
-    return this.publications;
+    this.publications = new Map(
+      (publications || []).map(item => {
+        console.log(item);
+        const data = item as ICitableData;
+        return [data.id + '', data];
+      })
+    );
+    return [...this.publications.values()];
   }
 
   private async loadAll(
     endpoint: string,
+    format = 'csljson',
+    extract?: string,
     progress?: (progress: number) => void
   ) {
-    let result = await this.fetch(endpoint);
+    let result = await this.fetch(endpoint, { format: format });
     const responses = [];
     // TODO
     const total =
@@ -108,7 +107,18 @@ export class ZoteroClient implements IReferenceProvider {
       console.log('links', links);
       const next = links.get('next')?.url;
       if (next) {
-        result = await this.fetch(endpoint, new URLSearchParams(next));
+        console.log(
+          'params for next',
+          Object.fromEntries(
+            new URLSearchParams(new URL(next).search).entries()
+          )
+        );
+        result = await this.fetch(endpoint, {
+          ...Object.fromEntries(
+            new URLSearchParams(new URL(next).search).entries()
+          ),
+          format: format
+        });
         // TODO: remove short circuit in future it is just here to iterate fast:
         done = true;
       } else {
@@ -117,7 +127,11 @@ export class ZoteroClient implements IReferenceProvider {
     }
     const results = [];
     for (const response of responses) {
-      const responseItems = await response.json();
+      let responseItems = await response.json();
+      console.log(responseItems);
+      if (extract) {
+        responseItems = responseItems[extract];
+      }
       for (const item of responseItems) {
         results.push(item);
       }
