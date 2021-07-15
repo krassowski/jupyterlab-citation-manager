@@ -33,7 +33,7 @@
   "scripts": {
     "bootstrap": "jlpm run fetch:schema && jlpm run build:schema",
     "build": "jlpm run build:lib && jlpm run build:labextension:dev",
-    "build:prod": "jlpm run clean && jlpm run build:lib && jlpm run build:labextension",
+    "build:prod": "jlpm run clean && jlpm run bootstrap && jlpm run build:lib && jlpm run build:labextension",
     "build:labextension": "jupyter labextension build .",
     "build:labextension:dev": "jupyter labextension build --development True .",
     "fetch:schema": "jlpm run fetch:schema:csl-citation && jlpm run fetch:schema:csl-data",
@@ -49,7 +49,7 @@
     "clean:all": "jlpm run clean:lib && jlpm run clean:labextension",
     "eslint": "eslint . --ext .ts,.tsx --fix",
     "eslint:check": "eslint . --ext .ts,.tsx",
-    "install:extension": "jlpm run bootstrap && jlpm run build",
+    "install:extension": "jlpm run build",
     "watch": "run-p watch:src watch:labextension",
     "watch:src": "tsc -w",
     "watch:labextension": "jupyter labextension watch ."
