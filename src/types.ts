@@ -6,11 +6,6 @@ import IIcon = LabIcon.IIcon;
 
 export type ICitableData = CslData[0];
 
-export interface ICollection {
-  id: string;
-  name: string;
-}
-
 /**
  * Citeproc Sys
  */
@@ -168,8 +163,15 @@ export interface IDocumentAdapter<T extends DocumentWidget> {
 
 export interface ICitationManager extends ICitationSystem {
   registerReferenceProvider(provider: IReferenceProvider): void;
+  addCitation(documentWidget: DocumentWidget): void;
+  addBibliography(documentWidget: DocumentWidget): void;
 }
 
 export const ICitationManager = new Token<ICitationManager>(
   '@krassowski/citation-manager:ICitationManager'
 );
+
+export enum CommandIDs {
+  insertCitation = 'cm:insert-citation',
+  insertBibliography = 'cm:insert-bibliography'
+}

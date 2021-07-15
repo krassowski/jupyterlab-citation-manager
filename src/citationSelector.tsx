@@ -1,9 +1,11 @@
 import IMatchResult = StringExt.IMatchResult;
 import { StringExt } from '@lumino/algorithm';
 import * as React from 'react';
-import { ICitationOption } from './types';
+import { ICitableData, ICitationOption } from './types';
 import { IOption, Selector } from './selector';
 import { UUID } from '@lumino/coreutils';
+import { TranslationBundle } from '@jupyterlab/translation';
+import { NameVariable } from './_csl_data';
 
 interface IYearMatch {
   absoluteDifference: number;
@@ -15,6 +17,10 @@ interface ICitationOptionMatch {
   creators: (IMatchResult | null)[] | null;
 }
 
+function anonymousMark(match: string) {
+  return <mark key={UUID.uuid4()}>{match}</mark>;
+}
+
 function CitationOptionTitle(props: {
   title: string | undefined;
   match: IMatchResult | null;
@@ -23,22 +29,104 @@ function CitationOptionTitle(props: {
     <span className={'cm-title'}>
       {props.title
         ? props.match
-          ? StringExt.highlight(props.title, props.match.indices, match => {
-              return <mark key={UUID.uuid4()}>{match}</mark>;
-            })
+          ? StringExt.highlight(props.title, props.match.indices, anonymousMark)
           : props.title
         : ''}
     </span>
   );
 }
 
+function formatAuthor(author: NameVariable): string {
+  return (author.given ? author.given[0] + '. ' : '') + author.family;
+}
+
+function CitationOptionAuthors(props: {
+  authors: NameVariable[] | undefined;
+  matches: (IMatchResult | null)[] | null | undefined;
+}) {
+  const matches = props.matches;
+  if (!matches || !props.authors) {
+    return null;
+  }
+  return (
+    <ul className={'cm-authors'}>
+      {props.authors?.map((author, i) => {
+        const match = matches[i];
+        const authorLabel = formatAuthor(author);
+        return (
+          <span className={'cm-author'}>
+            {match
+              ? StringExt.highlight(authorLabel, match.indices, anonymousMark)
+              : authorLabel}
+          </span>
+        );
+      })}
+    </ul>
+  );
+}
+
+function translateTypeLabels(
+  trans: TranslationBundle
+): Record<ICitableData['type'], string> {
+  return {
+    article: trans.__('Article'),
+    'article-journal': trans.__('Journal Article'),
+    'article-magazine': trans.__('Magazine Article'),
+    'article-newspaper': trans.__('Newspaper Article'),
+    bill: trans.__('Bill'),
+    book: trans.__('Book'),
+    broadcast: trans.__('Broadcast'),
+    chapter: trans.__('Chapter'),
+    classic: trans.__('Classic'),
+    collection: trans.__('Collection'),
+    dataset: trans.__('Dataset'),
+    document: trans.__('Document'),
+    entry: trans.__('Entry'),
+    'entry-dictionary': trans.__('Dictionary Entry'),
+    'entry-encyclopedia': trans.__('Encyclopedia Entry'),
+    event: trans.__('Event'),
+    figure: trans.__('Figure'),
+    graphic: trans.__('Graphic'),
+    hearing: trans.__('Hearing'),
+    interview: trans.__('Interview'),
+    legal_case: trans.__('Legal Case'),
+    legislation: trans.__('Legislation'),
+    manuscript: trans.__('Manuscript'),
+    map: trans.__('Map'),
+    motion_picture: trans.__('Motion Picture'),
+    musical_score: trans.__('Musical Score'),
+    pamphlet: trans.__('Pamphlet'),
+    'paper-conference': trans.__('Conference Paper'),
+    patent: trans.__('Patent'),
+    performance: trans.__('Performance'),
+    periodical: trans.__('Periodical'),
+    personal_communication: trans.__('Personal Communication'),
+    post: trans.__('Post'),
+    'post-weblog': trans.__('Weblog Post'),
+    regulation: trans.__('Regulation'),
+    report: trans.__('Report'),
+    review: trans.__('Review'),
+    'review-book': trans.__('Book review'),
+    software: trans.__('Software'),
+    song: trans.__('Song'),
+    speech: trans.__('Speech'),
+    standard: trans.__('Standard'),
+    thesis: trans.__('Thesis'),
+    treaty: trans.__('Treaty'),
+    webpage: trans.__('Webpage')
+  };
+}
+
 export class CitationSelector extends Selector<
   ICitationOption,
   ICitationOptionMatch
 > {
-  constructor() {
+  typeNames: Record<ICitableData['type'], string>;
+
+  constructor(protected trans: TranslationBundle) {
     super();
-    this.placeholder = 'Start typing title, author, or year';
+    this.placeholder = trans.__('Start typing title, author, or year');
+    this.typeNames = translateTypeLabels(trans);
   }
 
   createID(option: ICitationOption): string {
@@ -99,7 +187,7 @@ export class CitationSelector extends Selector<
       creators: publication.author
         ? publication.author.map(creator => {
             return StringExt.matchSumOfSquares(
-              (creator.given + ' ' + creator.family).toLowerCase(),
+              formatAuthor(creator).toLowerCase(),
               query
             );
           })
@@ -126,22 +214,38 @@ export class CitationSelector extends Selector<
     const data = props.option.data;
     const match = props.option.match;
     const publication = data.publication;
+    const type =
+      publication.type && publication.type in this.typeNames
+        ? this.typeNames[publication.type]
+        : publication.type;
     return (
       <div className={'cm-Option-content'}>
-        <span className={`cm-source cm-source-${data.source}`}>
-          {data.source[0]}
-        </span>
-        <CitationOptionTitle
-          title={publication.title}
-          match={match ? match.title : null}
-        />
-        <span className={'cm-citationCount'}>
-          {data.citationsInDocument !== 0
-            ? data.citationsInDocument + ' occurrence(s)'
-            : ''}
-        </span>
-        <span className={'cm-year'}>{publication.date?.getFullYear()}</span>
-        <span className={'cm-type'}>{publication.type}</span>
+        <div className={'cm-Option-main'}>
+          <span className={`cm-source cm-source-${data.source}`}>
+            {data.source[0]}
+          </span>
+          <CitationOptionTitle
+            title={publication.title}
+            match={match ? match.title : null}
+          />
+          <span className={'cm-citationCount'}>
+            {data.citationsInDocument !== 0
+              ? this.trans._n(
+                  '%1 occurrence',
+                  '%1 occurrences',
+                  data.citationsInDocument
+                )
+              : ''}
+          </span>
+          <span className={'cm-year'}>{publication.date?.getFullYear()}</span>
+          <span className={'cm-type'}>{type}</span>
+        </div>
+        <div className={'cm-Option-details'}>
+          <CitationOptionAuthors
+            authors={publication.author}
+            matches={match?.creators}
+          />
+        </div>
       </div>
     );
   }

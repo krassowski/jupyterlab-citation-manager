@@ -17,6 +17,8 @@
     color: var(--jp-ui-font-color1);
     background: var(--jp-layout-color1);
     font-size: var(--jp-ui-font-size1);
+    display: flex;
+    flex-direction: column;
 }
 
 .cm-SearchField-outer-wrapper {
@@ -69,6 +71,11 @@
 
 .cm-Option-content {
     display: flex;
+    flex-direction: column;
+}
+
+.cm-Option-main {
+    display: flex;
 }
 
 .cm-Option mark {
@@ -99,6 +106,27 @@
 }
 .cm-Option .cm-title {
     flex: auto;
+    height: 1.2em;
+    overflow: hidden;
+    white-space: nowrap;
+    position: relative;
+}
+.cm-Option .cm-title::after {
+    content: '';
+    width: 12px;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, var(--jp-layout-color1));
+    right: 0;
+    position: absolute;
+}
+.cm-Option:hover .cm-title::after {
+    background: transparent;
+}
+.cm-Option.cm-mod-active .cm-title::after {
+    background: transparent;
+}
+.cm-Option .cm-citationCount {
+    white-space: nowrap;
 }
 .cm-Option .cm-year {
     padding: 0 10px;
@@ -114,10 +142,35 @@ cite {
     text-transform: capitalize;
 }
 
+.cm-authors {
+    list-style: none;
+    padding: 0;
+    height: 1.25em;
+    overflow: hidden;
+    position: relative;
+}
+
+.cm-author {
+    padding-right: 5px;
+    color: var(--jp-ui-font-color2);
+}
+
+.cm-Option .cm-author mark {
+    color: var(--jp-ui-font-color2);
+}
+
 .cm-source-zotero {
     color: red;
 }
 
 .cm-single-source .cm-source {
+    display: none;
+}
+
+.jp-Toolbar .addBibliographyButton .jp-ToolbarButtonComponent-label {
+    display: none;
+}
+
+.jp-Toolbar .addCitationButton .jp-ToolbarButtonComponent-label {
     display: none;
 }

@@ -8,6 +8,7 @@ import { Widget } from '@lumino/widgets';
 import { Message } from '@lumino/messaging';
 import { Signal } from '@lumino/signaling';
 import { searchIcon } from '@jupyterlab/ui-components';
+import { ElementExt } from '@lumino/domutils';
 
 export interface IOption<D = any, M = any> {
   id: string;
@@ -171,12 +172,26 @@ export abstract class Selector<O, M> extends ReactWidget {
           this.acceptOption(result.data);
         };
 
-        const className =
-          this.activeIndex === i ? 'cm-Option cm-mod-active' : 'cm-Option';
+        const isActive = this.activeIndex === i;
+        const className = isActive ? 'cm-Option cm-mod-active' : 'cm-Option';
+
+        const RenderOption = this.renderOption.bind(this);
 
         return (
-          <li className={className} key={result.id} onClick={accept.bind(this)}>
-            <this.renderOption option={result} />
+          <li
+            className={className}
+            key={result.id}
+            onClick={accept.bind(this)}
+            ref={element => {
+              if (element && isActive && element.parentElement) {
+                ElementExt.scrollIntoViewIfNeeded(
+                  element.parentElement,
+                  element
+                );
+              }
+            }}
+          >
+            <RenderOption option={result} />
           </li>
         );
       });

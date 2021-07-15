@@ -1,11 +1,28 @@
 {
-  "jupyter.lab.shortcuts": [],
+  "jupyter.lab.shortcuts": [
+    {
+      "command": "cm:insert-citation",
+      "keys": ["Alt C"],
+      "selector": ".jp-Notebook"
+    },
+    {
+      "command": "cm:insert-bibliography",
+      "keys": ["Alt B"],
+      "selector": ".jp-Notebook"
+    }
+  ],
   "jupyter.lab.setting-icon": "citation:bibliography",
   "jupyter.lab.setting-icon-label": "Citation Manager",
   "title": "Citation Manager",
   "description": "Citation Manager settings.",
   "type": "object",
   "properties": {
+    "defaultStyle": {
+      "title": "Default Citation Style",
+      "type": "string",
+      "default": "apa",
+      "description": "The default citation style, one of the styles in the Citation Style Language (CSL) repository."
+    }
   },
   "additionalProperties": false
 }
