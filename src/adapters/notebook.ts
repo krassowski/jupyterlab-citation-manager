@@ -115,6 +115,7 @@ export class NotebookAdapter implements IDocumentAdapter<NotebookPanel> {
     const citations: ICitation[] = [];
 
     this.chooseCells(subset).forEach(cell => {
+      // TODO: subset >within< cell! (also always include the current cell in chooseCells)
       citations.push(...extractCitations(cell.model.value.text));
     });
     // TODO: use cache of cells contents?

@@ -8,6 +8,12 @@ import { ISettingRegistry } from '@jupyterlab/settingregistry';
 import { LabIcon } from '@jupyterlab/ui-components';
 import zoteroSvg from '../style/icons/book-plus.svg';
 import ISettings = ISettingRegistry.ISettings;
+import { InputDialog } from '@jupyterlab/apputils';
+import {
+  ITranslator,
+  nullTranslator,
+  TranslationBundle
+} from '@jupyterlab/translation';
 
 export const zoteroIcon = new LabIcon({
   name: 'citation:zotero',
@@ -53,16 +59,32 @@ export class ZoteroClient implements IReferenceProvider {
   publications: Map<string, ICitableData>;
   isReady: Promise<any>;
 
-  constructor(app: JupyterFrontEnd, settings: ISettings) {
+  constructor(
+    app: JupyterFrontEnd,
+    protected settings: ISettings,
+    protected trans: TranslationBundle
+  ) {
     settings.changed.connect(this.updateSettings, this);
     this.isReady = this.updateSettings(settings);
     this.publications = new Map();
   }
 
   private async fetch(endpoint: string, args: Record<string, string> = {}) {
-    if (!this.key || !this.serverURL) {
-      window.alert('Missing key please configure your API access key');
-      return;
+    if (!this.key) {
+      const userKey = await InputDialog.getPassword({
+        title: this.trans.__('Configure Zotero API Access key'),
+        label: this.trans.__(
+          `In order to access your Zotero collection you need to configure Zotero API key.
+          You can generate the API key after logging to www.zotero.org.
+          The key looks like this: P9NiFoyLeZu2bZNvvuQPDWsd.`
+        )
+      });
+      if (userKey.value) {
+        this.key = userKey.value;
+        this.settings.set('key', this.key).catch(console.warn);
+      } else {
+        return;
+      }
     }
 
     return fetch(
@@ -179,33 +201,35 @@ export class ZoteroClient implements IReferenceProvider {
 
 export const zoteroPlugin: JupyterFrontEndPlugin<void> = {
   id: 'jupyterlab-citation-manager:zotero',
-  requires: [ICitationManager],
-  optional: [ISettingRegistry],
+  requires: [ICitationManager, ISettingRegistry],
+  optional: [ITranslator],
   autoStart: true,
   activate: (
     app: JupyterFrontEnd,
     manager: ICitationManager,
-    settingRegistry: ISettingRegistry | null
+    settingRegistry: ISettingRegistry,
+    translator: ITranslator | null
   ) => {
     console.log('JupyterLab citation manager provider of Zotero is activated!');
-    if (settingRegistry) {
-      settingRegistry
-        .load(zoteroPlugin.id)
-        .then(settings => {
-          const client = new ZoteroClient(app, settings);
-          manager.registerReferenceProvider(client);
+    translator = translator || nullTranslator;
+    const trans = translator.load('jupyterlab-citation-manager');
 
-          console.log(
-            'jupyterlab-citation-manager:zotero settings loaded:',
-            settings.composite
-          );
-        })
-        .catch(reason => {
-          console.error(
-            'Failed to load settings for jupyterlab-citation-manager:zotero.',
-            reason
-          );
-        });
-    }
+    settingRegistry
+      .load(zoteroPlugin.id)
+      .then(settings => {
+        const client = new ZoteroClient(app, settings, trans);
+        manager.registerReferenceProvider(client);
+
+        console.log(
+          'jupyterlab-citation-manager:zotero settings loaded:',
+          settings.composite
+        );
+      })
+      .catch(reason => {
+        console.error(
+          'Failed to load settings for jupyterlab-citation-manager:zotero.',
+          reason
+        );
+      });
   }
 };
