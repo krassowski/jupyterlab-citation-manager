@@ -1,10 +1,10 @@
-# a mybinder.org-ready environment for demoing jupyterlab-zotero
+# a mybinder.org-ready environment for demoing jupyterlab-citation-manager
 # this environment may also be used locally on Linux/MacOS/Windows, e.g.
 #
 #   conda env update --file binder/environment.yml
-#   conda activate jupyterlab-zotero-demo
+#   conda activate jupyterlab-citation-manager-demo
 #
-name: jupyterlab-zotero-demo
+name: jupyterlab-citation-manager-demo
 
 channels:
   - conda-forge

@@ -1,5 +1,5 @@
 """
-jupyterlab-zotero setup
+jupyterlab-citation-manager setup
 """
 import json
 from pathlib import Path
@@ -9,7 +9,7 @@ import setuptools
 HERE = Path(__file__).parent.resolve()
 
 # The name of the project
-name = "jupyterlab-zotero"
+name = "jupyterlab-citation-manager"
 
 lab_path = (HERE / name.replace("-", "_") / "labextension")
 
@@ -19,7 +19,7 @@ ensured_targets = [
     str(lab_path / "static/style.js")
 ]
 
-labext_name = "jupyterlab-zotero"
+labext_name = "jupyterlab-citation-manager"
 
 data_files_spec = [
     ("share/jupyter/labextensions/%s" % labext_name, str(lab_path), "**"),

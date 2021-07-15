@@ -1,6 +1,6 @@
-# jupyterlab-zotero
+# jupyterlab-citation-manager
 
-![Github Actions Status](https://github.com/krassowski/jupyterlab-zotero/workflows/Build/badge.svg)[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/krassowski/jupyterlab-zotero/main?urlpath=lab)
+![Github Actions Status](https://github.com/krassowski/jupyterlab-citation-manager/workflows/Build/badge.svg)[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/krassowski/jupyterlab-citation-manager/main?urlpath=lab)
 
 Zotero integration for JupyterLab
 
@@ -21,7 +21,7 @@ Design goals:
 To install the extension, execute:
 
 ```bash
-pip install jupyterlab-zotero
+pip install jupyterlab-citation-manager
 ```
 
 ## Uninstall
@@ -29,7 +29,7 @@ pip install jupyterlab-zotero
 To remove the extension, execute:
 
 ```bash
-pip uninstall jupyterlab-zotero
+pip uninstall jupyterlab-citation-manager
 ```
 
 
@@ -45,7 +45,7 @@ The `jlpm` command is JupyterLab's pinned version of
 
 ```bash
 # Clone the repo to your local environment
-# Change directory to the jupyterlab-zotero directory
+# Change directory to the jupyterlab-citation-manager directory
 # Install package in development mode
 pip install -e .
 # Link your development version of the extension with JupyterLab
@@ -74,9 +74,9 @@ jupyter lab build --minimize=False
 ### Development uninstall
 
 ```bash
-pip uninstall jupyterlab-zotero
+pip uninstall jupyterlab-citation-manager
 ```
 
 In development mode, you will also need to remove the symlink created by `jupyter labextension develop`
 command. To find its location, you can run `jupyter labextension list` to figure out where the `labextensions`
-folder is located. Then you can remove the symlink named `jupyterlab-zotero` within that folder.
+folder is located. Then you can remove the symlink named `jupyterlab-citation-manager` within that folder.

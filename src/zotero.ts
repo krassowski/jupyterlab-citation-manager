@@ -1,7 +1,19 @@
-import { ICitableData, IReferenceProvider } from './types';
-import { JupyterFrontEnd } from '@jupyterlab/application';
+import { ICitableData, ICitationManager, IReferenceProvider } from './types';
+import {
+  JupyterFrontEnd,
+  JupyterFrontEndPlugin
+} from '@jupyterlab/application';
 import { ISettingRegistry } from '@jupyterlab/settingregistry';
+
+import { LabIcon } from '@jupyterlab/ui-components';
+import zoteroSvg from '../style/icons/book-plus.svg';
 import ISettings = ISettingRegistry.ISettings;
+
+export const zoteroIcon = new LabIcon({
+  name: 'citation:zotero',
+  // TODO: add proper zotero icon? There are some trademark considerations, may need an email first...
+  svgstr: zoteroSvg
+});
 
 interface IUser {
   name: string;
@@ -34,14 +46,16 @@ function parseLinks(links: string): Map<Rel, ILink> {
 export class ZoteroClient implements IReferenceProvider {
   id = 'zotero';
   name = 'Zotero';
+  icon = zoteroIcon;
   private serverURL: string | null = null;
   private key: string | null = null;
   private user: IUser | null = null;
   publications: Map<string, ICitableData>;
+  isReady: Promise<any>;
 
   constructor(app: JupyterFrontEnd, settings: ISettings) {
     settings.changed.connect(this.updateSettings, this);
-    this.updateSettings(settings);
+    this.isReady = this.updateSettings(settings);
     this.publications = new Map();
   }
 
@@ -140,18 +154,18 @@ export class ZoteroClient implements IReferenceProvider {
   }
 
   private reloadKey() {
-    this.fetch('keys/' + this.key).then(response => {
+    return this.fetch('keys/' + this.key).then(response => {
       if (!response) {
         console.error(response);
         return;
       }
-      response.json().then(result => {
+      return response.json().then(result => {
         console.log(result);
         this.user = {
           name: result.username,
           id: result.userID
         };
-        this.updatePublications().catch(console.warn);
+        return this.updatePublications();
       });
     });
   }
@@ -159,6 +173,39 @@ export class ZoteroClient implements IReferenceProvider {
   private updateSettings(settings: ISettings) {
     this.key = settings.composite.key as string;
     this.serverURL = settings.composite.server as string;
-    this.reloadKey();
+    return this.reloadKey();
   }
 }
+
+export const zoteroPlugin: JupyterFrontEndPlugin<void> = {
+  id: 'jupyterlab-citation-manager:zotero',
+  requires: [ICitationManager],
+  optional: [ISettingRegistry],
+  autoStart: true,
+  activate: (
+    app: JupyterFrontEnd,
+    manager: ICitationManager,
+    settingRegistry: ISettingRegistry | null
+  ) => {
+    console.log('JupyterLab citation manager provider of Zotero is activated!');
+    if (settingRegistry) {
+      settingRegistry
+        .load(zoteroPlugin.id)
+        .then(settings => {
+          const client = new ZoteroClient(app, settings);
+          manager.registerReferenceProvider(client);
+
+          console.log(
+            'jupyterlab-citation-manager:zotero settings loaded:',
+            settings.composite
+          );
+        })
+        .catch(reason => {
+          console.error(
+            'Failed to load settings for jupyterlab-citation-manager:zotero.',
+            reason
+          );
+        });
+    }
+  }
+};

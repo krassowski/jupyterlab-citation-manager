@@ -1,5 +1,8 @@
 import { CslData } from './_csl_data';
+import { Token } from '@lumino/coreutils';
 import { DocumentWidget } from '@jupyterlab/docregistry';
+import { LabIcon } from '@jupyterlab/ui-components';
+import IIcon = LabIcon.IIcon;
 
 export type ICitableData = CslData[0];
 
@@ -14,6 +17,19 @@ export interface ICollection {
 export interface ICitationSystem {
   retrieveLocale: (lang: string) => string;
   retrieveItem: (id: string) => ICitableData;
+  /**
+   * Generate string that will be appended to the bibliography entry to jump to the (first) citation in the document.
+   */
+  embedBibliographyEntry?: (itemID: string) => string;
+  /**
+   * Pos-process citation entry.
+   */
+  wrapCitationEntry?: (
+    entry: string,
+    itemID: string,
+    locatorText: string,
+    suffixText: string
+  ) => string;
 }
 
 interface IData {
@@ -22,19 +38,33 @@ interface IData {
 type CitationID = string;
 export type CitationLocation = [CitationID, number];
 export type CitationUpdate = [number, string];
+export interface ICitationItemData {
+  id: string;
+  item?: ICitableData;
+}
 
 export type CitationToInsert = {
   properties: {
     noteIndex: number;
   };
   citationID: CitationID;
-  citationItems: [
-    {
-      id: string;
-      item?: ICitableData;
-    }
-  ];
+  citationItems: ICitationItemData[];
 };
+
+export type CiteProcBibliography = [
+  {
+    maxoffset: number;
+    entryspacing: number;
+    linespacing: number;
+    hangingindent: boolean;
+    'second-field-align': boolean;
+    bibstart: string;
+    bibend: string;
+    bibliography_errors: any[];
+    entry_ids: string[];
+  },
+  string[]
+];
 
 /**
  * https://citeproc-js.readthedocs.io/en/latest/running.html
@@ -47,20 +77,8 @@ export interface ICiteProcEngine {
     citationsPre: CitationLocation[],
     citationsPost: CitationLocation[]
   ): [IData, CitationUpdate[]];
-  makeBibliography(): [
-    {
-      maxoffset: number;
-      entryspacing: number;
-      linespacing: number;
-      hangingindent: boolean;
-      'second-field-align': boolean;
-      bibstart: string;
-      bibend: string;
-      bibliography_errors: any[];
-      entry_ids: string[];
-    },
-    string[]
-  ];
+  appendCitationCluster(citation: CitationToInsert): [IData, CitationUpdate];
+  makeBibliography(): CiteProcBibliography;
 }
 
 export interface ICitableWrapper extends Partial<ICitableData> {
@@ -103,7 +121,7 @@ export interface ICitation extends Partial<ICitableData> {
    *
    * The array gets serialized for storage in HTML attributes.
    */
-  itemIds: string[];
+  items: string[];
   /**
    * The reference provider id (e.g. "zotero")
    */
@@ -123,8 +141,10 @@ export interface IReferenceProvider {
    * The name as shown in the user interface.
    */
   name: string;
+  icon: IIcon;
   publications: Map<string | number, ICitableData>;
   updatePublications(): Promise<ICitableData[]>;
+  isReady: Promise<any>;
   // getCollections?(): Promise<Map<string, ICitableData[]>>;
 }
 
@@ -145,3 +165,11 @@ export interface IDocumentAdapter<T extends DocumentWidget> {
 
   findCitations(subset: CitationQuerySubset): ICitation[];
 }
+
+export interface ICitationManager extends ICitationSystem {
+  registerReferenceProvider(provider: IReferenceProvider): void;
+}
+
+export const ICitationManager = new Token<ICitationManager>(
+  '@krassowski/citation-manager:ICitationManager'
+);

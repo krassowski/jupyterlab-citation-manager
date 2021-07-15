@@ -19,6 +19,12 @@
     font-size: var(--jp-ui-font-size1);
 }
 
+.cm-SearchField-outer-wrapper {
+    padding: 4px;
+    background-color: var(--jp-layout-color1);
+    z-index: 2;
+}
+
 .cm-SearchField-wrapper {
     overflow: overlay;
     padding: 0px 9px;
@@ -42,8 +48,7 @@
     color: white;
     background-color: var(--jp-brand-color1);
     position: absolute;
-    top: 4px;
-    right: 4px;
+    right: 8px;
     padding: 5px 5px 1px 5px;
     display: block;
 }
@@ -58,7 +63,26 @@
     color: var(--jp-ui-font-color1);
     font-size: var(--jp-ui-font-size1);
     font-weight: 400;
+    margin-left: 4px;
+    margin-right: 4px;
+}
+
+.cm-Option-content {
     display: flex;
+}
+
+.cm-Option mark {
+    color: var(--jp-ui-font-color0);
+    background-color: transparent;
+    font-weight: bold;
+}
+
+.cm-Option.cm-mod-active {
+    background: var(--jp-layout-color3);
+}
+
+.cm-Option:hover {
+    background: var(--jp-layout-color2);
 }
 
 .cm-OptionsList {
@@ -68,4 +92,32 @@
     min-height: 0;
     overflow: auto;
     list-style-type: none;
+}
+
+.cm-Option .cm-type {
+    flex: 0 0 auto;
+}
+.cm-Option .cm-title {
+    flex: auto;
+}
+.cm-Option .cm-year {
+    padding: 0 10px;
+}
+
+cite {
+    font-style: normal;
+}
+
+.cm-source {
+    margin-right: 5px;
+    font-weight: bold;
+    text-transform: capitalize;
+}
+
+.cm-source-zotero {
+    color: red;
+}
+
+.cm-single-source .cm-source {
+    display: none;
 }

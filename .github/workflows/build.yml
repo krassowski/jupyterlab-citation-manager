@@ -53,7 +53,7 @@ jobs:
         jlpm run eslint:check
         python -m pip install .
 
-        jupyter labextension list 2>&1 | grep -ie "jupyterlab-zotero.*OK"
+        jupyter labextension list 2>&1 | grep -ie "jupyterlab-citation-manager.*OK"
         python -m jupyterlab.browser_check
 
         check-manifest -v
@@ -92,5 +92,5 @@ jobs:
         sudo rm -rf $(which node)
         pip install myextension.tar.gz
         pip install jupyterlab
-        jupyter labextension list 2>&1 | grep -ie "jupyterlab-zotero.*OK"
+        jupyter labextension list 2>&1 | grep -ie "jupyterlab-citation-manager.*OK"
         python -m jupyterlab.browser_check --no-chrome-test

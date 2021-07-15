@@ -8,7 +8,7 @@ include install.json
 include ts*.json
 include yarn.lock
 
-graft jupyterlab_zotero/labextension
+graft jupyterlab_citation_manager/labextension
 
 # Javascript files
 graft src
