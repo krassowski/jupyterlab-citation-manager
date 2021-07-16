@@ -6,7 +6,6 @@ import {
   IDocumentAdapter
 } from '../types';
 import { INotebookModel, NotebookPanel } from '@jupyterlab/notebook';
-import bibliography from '../../style/icons/book-open-variant.svg';
 import { DocumentRegistry } from '@jupyterlab/docregistry';
 import { DisposableDelegate, IDisposable } from '@lumino/disposable';
 import { CommandToolbarButton } from '@jupyterlab/apputils';
@@ -36,10 +35,10 @@ export class NotebookAdapter implements IDocumentAdapter<NotebookPanel> {
     return this.document.model.metadata.get('citation-style') as string;
   }
 
-  setCitationStyle(newStyle: string) {
+  setCitationStyle(newStyle: string): void {
     if (!this.document.model) {
       console.warn('Cannot set style on', this.document, ' - no models');
-      return null;
+      return;
     }
     this.document.model.metadata.set('citation-style', newStyle);
   }
@@ -50,29 +49,39 @@ export class NotebookAdapter implements IDocumentAdapter<NotebookPanel> {
     );
   }
 
-  insertCitation(citation: ICitation): void {
+  protected formatCitation(citation: ICitation): string {
     const items =
       citation.items.length > 1
         ? JSON.stringify(citation.items)
         : citation.items[0];
+    return `<cite id="${citation.citationId}" data-source="${citation.source}" data-items="${items}">${citation.text}</cite>`;
+  }
+
+  insertCitation(citation: ICitation): void {
     // TODO: item data needs to be stored in the notebook metadata as well to enable two persons with tow different Zotero collections to collaborate
     //   and this needs to happen transparently. In that case ultimately all metadata apart from citation id could be stored in notebook or cell metadata.
     //   using cell metadata has an advantage of not keeping leftovers when deleting cells and its easier to copy-paste everything from notebook to notebook.
     //   the metadata should include DOI and all elements used in the UI (title, date, authors)
-    this.insertAtCursor(
-      `<cite id="${citation.citationId}" data-source="${citation.source}" data-items="${items}">${citation.text}</cite>`
-    );
+    this.insertAtCursor(this.formatCitation(citation));
   }
 
   updateCitation(citation: ICitation): void {
     const pattern = new RegExp(
-      `<cite id=["']${citation.id}["'] [^>]+?>([\\s\\S]*?)<\\/cite>`
+      `<cite id=["']${citation.citationId}["'] [^>]+?>([\\s\\S]*?)<\\/cite>`
     );
     let matches = 0;
     this.markdownCells.forEach(cell => {
       const oldText = cell.model.value.text;
-      if (oldText.search(/<cite /) !== -1 && oldText.search(pattern) !== -1) {
-        cell.model.value.text = oldText.replace(pattern, bibliography);
+      const matchIndex = oldText.search(pattern);
+      if (matchIndex !== -1) {
+        const newCitation = this.formatCitation(citation);
+        const old = oldText.slice(matchIndex, matchIndex + newCitation.length);
+        if (newCitation !== old) {
+          cell.model.value.text = oldText.replace(
+            pattern,
+            this.formatCitation(citation)
+          );
+        }
         matches += 1;
       }
     });

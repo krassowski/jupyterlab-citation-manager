@@ -8,6 +8,9 @@ include install.json
 include ts*.json
 include yarn.lock
 
+# Citations Style Language
+graft *.csl
+
 graft jupyterlab_citation_manager/labextension
 
 # Javascript files

@@ -140,8 +140,11 @@ class UnifiedCitationManager implements ICitationManager {
     adapter.citations = adapter.findCitations('all');
 
     let i = 0;
+    const readyProcessor = await processor;
     for (const citation of adapter.citations) {
-      (await processor).appendCitationCluster({
+      // TODO: this could be rewritten to use `processCitationCluster` directly
+      //  which should avoid an extra loop in `appendCitationCluster` driving complexity up
+      const [result] = readyProcessor.appendCitationCluster({
         properties: {
           noteIndex: i
         },
@@ -152,6 +155,8 @@ class UnifiedCitationManager implements ICitationManager {
           } as ICitationItemData;
         })
       });
+      console.log(result);
+      adapter.updateCitation({ ...citation, text: result[1] });
       i++;
     }
     const bibliography = (await processor).makeBibliography();

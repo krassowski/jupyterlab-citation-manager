@@ -72,7 +72,9 @@ export interface ICiteProcEngine {
     citationsPre: CitationLocation[],
     citationsPost: CitationLocation[]
   ): [IData, CitationUpdate[]];
-  appendCitationCluster(citation: CitationToInsert): [IData, CitationUpdate];
+  appendCitationCluster(
+    citation: CitationToInsert
+  ): [number, string, CitationID][];
   makeBibliography(): CiteProcBibliography;
 }
 
