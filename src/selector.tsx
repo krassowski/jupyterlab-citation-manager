@@ -16,6 +16,8 @@ export interface IOption<D = any, M = any> {
   data: D;
 }
 
+const ACTIVE_CLASS = 'cm-mod-active';
+
 export abstract class Selector<O, M> extends ReactWidget {
   private _query: string;
   private _filteredOptions: IOption<O, M>[];
@@ -53,11 +55,10 @@ export abstract class Selector<O, M> extends ReactWidget {
     this.options = options;
     this._filteredOptions = this.transformOptions(this.getInitialOptions());
     this.show();
-    console.log(this._filteredOptions);
-    this._optionsChanged.emit(this._filteredOptions);
     if (!this.isAttached) {
       this.attach();
     }
+    this._optionsChanged.emit(this._filteredOptions);
     return new Promise<O>((accept, reject) => {
       this._accept = accept;
       this._reject = reject;
@@ -133,8 +134,16 @@ export abstract class Selector<O, M> extends ReactWidget {
     });
   }
 
+  protected getOptionNodes(): NodeListOf<HTMLLIElement> {
+    return this.node.querySelectorAll('.cm-OptionsList li.cm-Option');
+  }
+
   protected handleInput(event: React.FormEvent<HTMLInputElement>): void {
     this._query = (event.target as HTMLInputElement).value;
+    const optionsNodes = this.getOptionNodes();
+    if (this.activeIndex < optionsNodes.length) {
+      optionsNodes[this.activeIndex].classList.remove(ACTIVE_CLASS);
+    }
     this._filteredOptions = this.options
       .map(option => {
         return {
@@ -145,12 +154,16 @@ export abstract class Selector<O, M> extends ReactWidget {
       })
       .filter(this.filterOption)
       .sort(this.sortOptions);
+    this.activeIndex = 0;
+    if (optionsNodes.length) {
+      optionsNodes[this.activeIndex].classList.add(ACTIVE_CLASS);
+    }
     this._optionsChanged.emit(this._filteredOptions);
   }
 
   protected renderOption(props: { option: IOption<O, M> }): JSX.Element {
     const data = props.option.data;
-    return <div className={'cm-Option-content'}>{{ data }}</div>;
+    return <div className={'cm-Option-content'}>{JSON.stringify(data)}</div>;
   }
 
   protected dynamicClassForList(options: IOption<O, M>[]): string {
@@ -173,24 +186,12 @@ export abstract class Selector<O, M> extends ReactWidget {
         };
 
         const isActive = this.activeIndex === i;
-        const className = isActive ? 'cm-Option cm-mod-active' : 'cm-Option';
+        const className = isActive ? `cm-Option ${ACTIVE_CLASS}` : 'cm-Option';
 
         const RenderOption = this.renderOption.bind(this);
 
         return (
-          <li
-            className={className}
-            key={result.id}
-            onClick={accept.bind(this)}
-            ref={element => {
-              if (element && isActive && element.parentElement) {
-                ElementExt.scrollIntoViewIfNeeded(
-                  element.parentElement,
-                  element
-                );
-              }
-            }}
-          >
+          <li className={className} key={result.id} onClick={accept.bind(this)}>
             <RenderOption option={result} />
           </li>
         );
@@ -287,6 +288,11 @@ export abstract class Selector<O, M> extends ReactWidget {
     const index = this.activeIndex;
     const options = this._filteredOptions;
     const pageSize = 10;
+    const optionsNodes = this.getOptionNodes();
+    if (optionsNodes.length) {
+      optionsNodes[this.activeIndex].classList.remove(ACTIVE_CLASS);
+    }
+
     switch (how) {
       case 'down':
         this.activeIndex = index === options.length - 1 ? 0 : index + 1;
@@ -310,7 +316,14 @@ export abstract class Selector<O, M> extends ReactWidget {
         this.activeIndex = 0;
         break;
     }
-    this._optionsChanged.emit(options);
+    if (optionsNodes.length) {
+      const activatedElement = optionsNodes[this.activeIndex];
+      optionsNodes[this.activeIndex].classList.add(ACTIVE_CLASS);
+      ElementExt.scrollIntoViewIfNeeded(
+        activatedElement.parentElement as HTMLElement,
+        activatedElement
+      );
+    }
   }
 
   /**

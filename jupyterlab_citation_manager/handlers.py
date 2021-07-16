@@ -1,24 +1,46 @@
-import json
-
 from jupyter_server.base.handlers import APIHandler
 from jupyter_server.utils import url_path_join
-import tornado
 
-class RouteHandler(APIHandler):
+import tornado
+from tornado.web import StaticFileHandler
+
+from .styles import discover_styles, styles_to_url
+from ._version import __version__
+
+
+class StylesManagerHandler(APIHandler):
+
+    styles = []
+
     # The following decorator should be present on all verb methods (head, get, post,
     # patch, put, delete, options) to ensure only authorized user can request the
     # Jupyter server
     @tornado.web.authenticated
     def get(self):
-        self.finish(json.dumps({
-            "data": "This is /jupyterlab-citation-manager/get_example endpoint!"
-        }))
+        self.finish({
+            'version': __version__,
+            'styles': self.styles
+        })
 
 
-def setup_handlers(web_app):
+def setup_handlers(web_app, url_path, server_app):
+    styles = discover_styles(server_app)
     host_pattern = ".*$"
-
     base_url = web_app.settings["base_url"]
-    route_pattern = url_path_join(base_url, "jupyterlab-citation-manager", "get_example")
-    handlers = [(route_pattern, RouteHandler)]
+
+    handlers = []
+    for style in styles:
+        style_url = url_path_join(base_url, url_path, style['id'])
+        handlers.append(
+            (
+                r"{}/(.*\.(?:csl))".format(style_url),
+                StaticFileHandler,
+                {"path": style['path']}
+            )
+        )
+    web_app.add_handlers(host_pattern, handlers)
+    StylesManagerHandler.styles = styles_to_url(styles, url_path_join(base_url, url_path))
+
+    route_pattern = url_path_join(base_url, url_path, "styles")
+    handlers = [(route_pattern, StylesManagerHandler)]
     web_app.add_handlers(host_pattern, handlers)

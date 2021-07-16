@@ -151,6 +151,11 @@ export interface IDocumentAdapter<T extends DocumentWidget> {
    */
   citations: ICitation[];
   document: T;
+  /**
+   * Use getter to read it from metadata, and setter to set it to metadata.
+   */
+  getCitationStyle(): string | undefined;
+  setCitationStyle(value: string): void;
 
   insertCitation(citation: ICitation): void;
   updateCitation(citation: ICitation): void;
@@ -173,5 +178,48 @@ export const ICitationManager = new Token<ICitationManager>(
 
 export enum CommandIDs {
   insertCitation = 'cm:insert-citation',
-  insertBibliography = 'cm:insert-bibliography'
+  insertBibliography = 'cm:insert-bibliography',
+  changeBibliographyStyle = 'cm:change-bibliography-style'
+}
+
+interface IStyleInfo {
+  id: string;
+  title: string;
+  shortTitle?: string;
+  rights?: string;
+  license?: string;
+  // may be empty
+  fields: string[];
+  // may be empty
+  authors: string[];
+  // may be empty
+  contributors: string[];
+}
+
+/**
+ * CSL data corresponding to a .csl file.
+ */
+export interface IStyle {
+  /**
+   * Identifier of the style consisting of the filename without the .csl suffix
+   * and path information if needed to distinguish from other styles.
+   */
+  id: string;
+  /**
+   * Information extracted from the XML inside .csl file
+   */
+  info: IStyleInfo;
+  /**
+   * Potentially non-unique ID (id without the path information)
+   */
+  shortId: string;
+  /**
+   * Path to the .csl file.
+   */
+  csl: string;
+}
+
+export interface IStyleManagerResponse {
+  version: string;
+  styles: IStyle[];
 }

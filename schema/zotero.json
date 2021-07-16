@@ -1,6 +1,8 @@
 {
+  "jupyter.lab.setting-icon": "citation:zotero",
+  "jupyter.lab.setting-icon-label": "Citation Manager:Zotero connector",
   "jupyter.lab.shortcuts": [],
-  "title": "Zotero Connector",
+  "title": "Citation Manager: Zotero",
   "description": "Zotero Connector settings.",
   "type": "object",
   "properties": {

@@ -2,6 +2,7 @@
 jupyterlab-citation-manager setup
 """
 import json
+import sys
 from pathlib import Path
 
 import setuptools
@@ -24,6 +25,17 @@ labext_name = "jupyterlab-citation-manager"
 data_files_spec = [
     ("share/jupyter/labextensions/%s" % labext_name, str(lab_path), "**"),
     ("share/jupyter/labextensions/%s" % labext_name, str(HERE), "install.json"),
+    ("share/jupyter/csl-styles", str(HERE / "csl-styles"), "**"),
+    (
+        "etc/jupyter/jupyter_notebook_config.d",
+        "jupyter-config/jupyter_notebook_config.d",
+        "jupyterlab_citation_manager.json"
+    ),
+    (
+        "etc/jupyter/jupyter_server_config.d",
+        "jupyter-config/jupyter_server_config.d",
+        "jupyterlab_citation_manager.json"
+    ),
 ]
 
 long_description = (HERE / "README.md").read_text()
@@ -74,7 +86,11 @@ try:
     setup_args['cmdclass'] = wrap_installers(post_develop=post_develop, ensured_targets=ensured_targets)
     setup_args['data_files'] = get_data_files(data_files_spec)
 except ImportError as e:
-    pass
+    import logging
+    logging.basicConfig(format="%(levelname)s: %(message)s")
+    logging.warning("Build tool `jupyter-packaging` is missing. Install it with pip or conda.")
+    if not ("--name" in sys.argv or "--version" in sys.argv):
+        raise e
 
 if __name__ == "__main__":
     setuptools.setup(**setup_args)

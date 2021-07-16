@@ -60,7 +60,6 @@ export class ZoteroClient implements IReferenceProvider {
   isReady: Promise<any>;
 
   constructor(
-    app: JupyterFrontEnd,
     protected settings: ISettings,
     protected trans: TranslationBundle
   ) {
@@ -217,7 +216,7 @@ export const zoteroPlugin: JupyterFrontEndPlugin<void> = {
     settingRegistry
       .load(zoteroPlugin.id)
       .then(settings => {
-        const client = new ZoteroClient(app, settings, trans);
+        const client = new ZoteroClient(settings, trans);
         manager.registerReferenceProvider(client);
 
         console.log(

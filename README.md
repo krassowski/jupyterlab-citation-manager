@@ -3,7 +3,7 @@
 ![Github Actions Status](https://github.com/krassowski/jupyterlab-citation-manager/workflows/Build/badge.svg)
 [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/krassowski/jupyterlab-citation-manager/main?urlpath=lab)
 
-Zotero integration for JupyterLab
+Citation Manager for JupyterLab. Currently supports Zotero.
 
 Design goals:
 
@@ -11,7 +11,6 @@ Design goals:
   should it be everything? maybe. But it should not occupy too much space in Markdown editor
 - users should be able to add citations manually by adding <cite>
 - the extension should allow integration with services other than zotero
-
 
 ## Requirements
 
@@ -33,6 +32,47 @@ To remove the extension, execute:
 pip uninstall jupyterlab-citation-manager
 ```
 
+## Citation styles
+
+This extension includes thousands citation styles form the
+[official repository](https://github.com/citation-style-language/styles) of
+[Citation Language Styles](https://citationstyles.org/) (CSL) project.
+
+If you want to add a custom citation style, you can do so by placing a `.csl` file in `csl-styles` folder in one of the `data` locations as returned by:
+
+```bash
+jupyter --paths
+```
+
+The `.csl` file should follow CSL v1.0.1 specification (see [official CSL specification](https://docs.citationstyles.org/en/stable/specification.html)).
+
+### Example
+
+If `jupyter --paths` looks like:
+
+```
+config:
+    /home/your_name/.jupyter
+    /usr/local/etc/jupyter
+    /etc/jupyter
+data:
+    /home/your_name/.local/share/jupyter
+    /usr/local/share/jupyter
+    /usr/share/jupyter
+runtime:
+    /home/your_name/.local/share/jupyter/runtime
+```
+
+and you want to add your modified version of APA style, you would put `my-custom-apa.csl` in `/home/your_name/.local/share/jupyter/csl-styles` (you will need to create this folder), so that the final structure looks similar to:
+
+```
+/home/your_name/.local/share/jupyter
+├── csl-styles
+│   └── my-custom-apa.csl
+├── nbsignatures.db
+├── notebook_secret
+└── runtime
+```
 
 ## Contributing
 
@@ -81,3 +121,23 @@ pip uninstall jupyterlab-citation-manager
 In development mode, you will also need to remove the symlink created by `jupyter labextension develop`
 command. To find its location, you can run `jupyter labextension list` to figure out where the `labextensions`
 folder is located. Then you can remove the symlink named `jupyterlab-citation-manager` within that folder.
+
+### Updating citation styles
+
+The citation styles are retrieved from the CSL repository using git submodules.
+You can update the submodule to fetch the most recent citation styles:
+
+```bash
+# fetch the latest styles from the currently tracked CSL version branch
+git submodule update csl-styles
+# store the information about the most recent commit in version control
+git commit csl-styles
+```
+
+To update the version branch:
+
+```bash
+# replace v1.0.1 with the version to track
+git submodule set-branch --branch v1.0.1 csl-styles
+git commit csl-styles
+```

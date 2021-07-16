@@ -17,10 +17,12 @@ import {
   ICitationOption,
   ICiteProcEngine,
   IDocumentAdapter,
-  IReferenceProvider
+  IReferenceProvider,
+  IStyle,
+  IStyleManagerResponse
 } from './types';
 import { zoteroPlugin } from './zotero';
-import { DefaultMap, harmonizeData } from './utils';
+import { DefaultMap, harmonizeData, simpleRequest } from './utils';
 
 import { LabIcon } from '@jupyterlab/ui-components';
 import addCitation from '../style/icons/book-plus.svg';
@@ -34,6 +36,8 @@ import {
 } from '@jupyterlab/translation';
 import { NotebookAdapter, NotebookButtons } from './adapters/notebook';
 import { ICommandPalette } from '@jupyterlab/apputils';
+import { requestAPI } from './handler';
+import { StyleSelector } from './styleSelector';
 
 export const addCitationIcon = new LabIcon({
   name: 'citation:add',
@@ -47,11 +51,47 @@ export const BibliographyIcon = new LabIcon({
 
 const PLUGIN_ID = 'jupyterlab-citation-manager:plugin';
 
+class StylesManager {
+  public ready: Promise<any>;
+  styles: IStyle[];
+  private selector: StyleSelector;
+
+  constructor(protected trans: TranslationBundle) {
+    this.selector = new StyleSelector(trans);
+    this.styles = [];
+    // read the list of languages from the external extension
+    this.ready = this.fetchStylesList();
+  }
+
+  async selectStyle() {
+    await this.ready;
+    return await this.selector.getItem(
+      this.styles.map(style => {
+        return {
+          style: style
+        };
+      })
+    );
+  }
+
+  updateStyles() {
+    this.ready = this.fetchStylesList();
+  }
+
+  protected fetchStylesList() {
+    return requestAPI<any>('styles').then((values: IStyleManagerResponse) => {
+      console.debug('Styles are ready');
+      this.styles = values.styles;
+    });
+  }
+}
+
 class UnifiedCitationManager implements ICitationManager {
   private providers: Map<string, IReferenceProvider>;
   private adapters: WeakMap<DocumentWidget, IDocumentAdapter<DocumentWidget>>;
   private selector: CitationSelector;
-  private processors: WeakMap<DocumentWidget, ICiteProcEngine>;
+  private styles: StylesManager;
+  private processors: WeakMap<DocumentWidget, Promise<ICiteProcEngine>>;
   protected defaultStyleID = 'apa';
 
   constructor(
@@ -59,40 +99,19 @@ class UnifiedCitationManager implements ICitationManager {
     settingsRegistry: ISettingRegistry | null,
     protected trans: TranslationBundle
   ) {
+    this.styles = new StylesManager(trans);
     this.selector = new CitationSelector(trans);
     this.selector.hide();
     this.adapters = new WeakMap();
     this.processors = new WeakMap();
     // TODO generalize to allow use in Markdown Editor too
     notebookTracker.widgetAdded.connect((tracker, panel) => {
-      // TODO: refresh on changes?
-
       const debouncedUpdate = new Debouncer(async () => {
         await Promise.all(
           [...this.providers.values()].map(provider => provider.isReady)
         );
-        const adapter = this.getAdapter(panel);
-        const processor = this.createProcessor();
-        this.processors.set(panel, processor);
-        adapter.citations = adapter.findCitations('all');
-
-        let i = 0;
-        for (const citation of adapter.citations) {
-          processor.appendCitationCluster({
-            properties: {
-              noteIndex: i
-            },
-            citationID: citation.citationId,
-            citationItems: citation.items.map(itemID => {
-              return {
-                id: citation.source + '|' + itemID
-              } as ICitationItemData;
-            })
-          });
-          i++;
-        }
-        const bibliography = processor.makeBibliography();
-        adapter.updateBibliography(this.processBibliography(bibliography));
+        this.processFromScratch(panel).catch(console.warn);
+        // TODO: hoist debounce rate to settings
       }, 2000);
 
       panel.content.modelContentChanged.connect(() => {
@@ -106,6 +125,37 @@ class UnifiedCitationManager implements ICitationManager {
         this.updateSettings(settings);
       });
     }
+  }
+
+  protected async processFromScratch(
+    panel: NotebookPanel,
+    styleId: string | undefined = undefined
+  ) {
+    const adapter = this.getAdapter(panel);
+    if (!styleId) {
+      styleId = adapter.getCitationStyle();
+    }
+    const processor = this.createProcessor(styleId);
+    this.processors.set(panel, processor);
+    adapter.citations = adapter.findCitations('all');
+
+    let i = 0;
+    for (const citation of adapter.citations) {
+      (await processor).appendCitationCluster({
+        properties: {
+          noteIndex: i
+        },
+        citationID: citation.citationId,
+        citationItems: citation.items.map(itemID => {
+          return {
+            id: citation.source + '|' + itemID
+          } as ICitationItemData;
+        })
+      });
+      i++;
+    }
+    const bibliography = (await processor).makeBibliography();
+    adapter.updateBibliography(this.processBibliography(bibliography));
   }
 
   protected updateSettings(settings: ISettingRegistry.ISettings) {
@@ -169,7 +219,8 @@ class UnifiedCitationManager implements ICitationManager {
     if (!adapter) {
       adapter = new NotebookAdapter(content);
       this.adapters.set(content, adapter);
-      this.processors.set(content, this.createProcessor());
+      const initialStyle = adapter.getCitationStyle();
+      this.processors.set(content, this.createProcessor(initialStyle));
     }
     if (!adapter) {
       throw Error('This should not happen');
@@ -197,8 +248,8 @@ class UnifiedCitationManager implements ICitationManager {
 
     const options = this.collectOptions(citationsAlreadyInDocument);
 
-    this.selector.getItem(options).then(chosenOption => {
-      const processor = this.processors.get(content);
+    this.selector.getItem(options).then(async chosenOption => {
+      const processor = await this.processors.get(content);
       if (!processor) {
         console.warn('Could not find a processor for ', content);
         return;
@@ -292,28 +343,27 @@ class UnifiedCitationManager implements ICitationManager {
     );
   }
 
-  createProcessor(styleID?: string): ICiteProcEngine {
+  async createProcessor(styleID?: string): Promise<ICiteProcEngine> {
     if (!styleID) {
       styleID = this.defaultStyleID;
     }
-    // Get the CSL style as a serialized string of XML
-    const xhr = new XMLHttpRequest();
-    xhr.open(
-      'GET',
-      'https://raw.githubusercontent.com/citation-style-language/styles/master/' +
-        styleID +
-        '.csl',
-      false
-    );
-    xhr.send(null);
-    const styleAsText = xhr.responseText;
-    return new CSL.Engine(this, styleAsText);
+    // try the offline copy first, in case those are use-defined (local) styles,
+    // and because it should be generally faster and nicer for GitHub:
+    // TODO: should it use style object? What should be stored as the default? Are filename identifiers stable?
+
+    // fallback to online copy (in case of server not being available):
+    return simpleRequest(
+      `https://raw.githubusercontent.com/citation-style-language/styles/master/${styleID}.csl`
+    ).then(result => {
+      const styleAsText = result.response.responseText;
+      return new CSL.Engine(this, styleAsText);
+    });
   }
 
-  addBibliography(content: NotebookPanel) {
+  async addBibliography(content: NotebookPanel) {
     console.log('adding bibliography');
     const adapter = this.getAdapter(content);
-    const processor = this.processors.get(content);
+    const processor = await this.processors.get(content);
     if (!processor) {
       console.warn('Could not find a processor for ', content);
       return;
@@ -321,6 +371,14 @@ class UnifiedCitationManager implements ICitationManager {
     const bibliography = processor.makeBibliography();
     console.log(bibliography);
     adapter.insertBibliography(this.processBibliography(bibliography));
+  }
+
+  changeStyle(content: NotebookPanel) {
+    this.styles.selectStyle().then(style => {
+      console.log('selected style', style);
+      this.getAdapter(content).setCitationStyle(style.style.shortId);
+      this.processFromScratch(content, style.style.shortId).then(console.warn);
+    });
   }
 
   retrieveItem(id: string): ICitableData {
@@ -390,13 +448,30 @@ function addCommands(
         console.warn('Panel not found for command');
         return;
       }
-      manager.addBibliography(panel);
+      manager.addBibliography(panel).catch(console.warn);
     },
     isEnabled: () => {
       const panel = notebookTracker.currentWidget;
       return !!panel;
     },
     icon: BibliographyIcon
+  });
+
+  app.commands.addCommand(CommandIDs.changeBibliographyStyle, {
+    label: trans.__('Change bibliography style'),
+    caption: trans.__('Change bibliography style for the active document.'),
+    execute: () => {
+      const panel = notebookTracker.currentWidget;
+      if (!panel) {
+        console.warn('Panel not found for command');
+        return;
+      }
+      manager.changeStyle(panel);
+    },
+    isEnabled: () => {
+      const panel = notebookTracker.currentWidget;
+      return !!panel;
+    }
   });
 
   if (commandPalette) {
@@ -407,6 +482,10 @@ function addCommands(
     });
     commandPalette.addItem({
       command: CommandIDs.insertBibliography,
+      category: category
+    });
+    commandPalette.addItem({
+      command: CommandIDs.changeBibliographyStyle,
       category: category
     });
   }

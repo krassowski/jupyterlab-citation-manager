@@ -15,8 +15,7 @@ import { JupyterFrontEnd } from '@jupyterlab/application';
 
 export class NotebookAdapter implements IDocumentAdapter<NotebookPanel> {
   citations: ICitation[];
-  // TODO
-  // style: ICitationStyle;
+
   constructor(public document: NotebookPanel) {
     this.citations = [];
   }
@@ -28,6 +27,21 @@ export class NotebookAdapter implements IDocumentAdapter<NotebookPanel> {
       const offset = activeCell.editor.getOffsetAt(cursor);
       activeCell.model.value.insert(offset, text);
     }
+  }
+
+  getCitationStyle(): string | undefined {
+    if (!this.document.model) {
+      return;
+    }
+    return this.document.model.metadata.get('citation-style') as string;
+  }
+
+  setCitationStyle(newStyle: string) {
+    if (!this.document.model) {
+      console.warn('Cannot set style on', this.document, ' - no models');
+      return null;
+    }
+    this.document.model.metadata.set('citation-style', newStyle);
   }
 
   insertBibliography(bibliography: string): void {

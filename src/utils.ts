@@ -2,6 +2,24 @@ import { ICitableData, ICitableWrapper, ICitation } from './types';
 import marked from 'marked';
 import { DateContentModel } from './_csl_citation';
 
+interface IResponse {
+  response: XMLHttpRequest;
+  progress: ProgressEvent;
+}
+
+export async function simpleRequest(
+  url: string,
+  method: 'GET' | 'POST' | 'DELETE' = 'GET'
+): Promise<IResponse> {
+  const xhr = new XMLHttpRequest();
+  return new Promise((accept, reject) => {
+    xhr.open(method, url, true);
+    xhr.onload = progress => accept({ response: xhr, progress: progress });
+    xhr.onerror = reject;
+    xhr.send(null);
+  });
+}
+
 export class DefaultMap<K extends string | number | boolean, V extends any> {
   private map: Map<K, V>;
 
