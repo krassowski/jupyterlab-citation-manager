@@ -404,7 +404,7 @@ class UnifiedCitationManager implements ICitationManager {
     const xhr = new XMLHttpRequest();
     xhr.open(
       'GET',
-      'https://raw.githubusercontent.com/Juris-M/citeproc-js-docs/master/locales-' +
+      'https://raw.githubusercontent.com/citation-style-language/locales/master/locales-' +
         lang +
         '.xml',
       false
