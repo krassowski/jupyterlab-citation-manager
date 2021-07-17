@@ -206,6 +206,24 @@ cite {
     display: none;
 }
 
+.cm-ProgressBar {
+    line-height: 24px;
+    font-size: var(--jp-ui-font-size1);
+}
+
+.cm-ProgressBar > div > div {
+    height: 24px;
+    display: block;
+    background: var(--jp-brand-color1);
+}
+
+.cm-ProgressBar > div {
+    line-height: 24px;
+    display: inline-block;
+    background: var(--jp-layout-color3);
+    border-color: var(--jp-layout-color4);
+}
+
 /*
 CSL requires styling the fields according to:
 https://docs.citationstyles.org/en/stable/specification.html#display

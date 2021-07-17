@@ -524,7 +524,7 @@
 
 "@jupyterlab/statusbar@^3.0.9":
   version "3.0.9"
-  resolved "https://registry.npmjs.org/@jupyterlab/statusbar/-/statusbar-3.0.9.tgz"
+  resolved "https://registry.yarnpkg.com/@jupyterlab/statusbar/-/statusbar-3.0.9.tgz#b00d8b74e813bb9534e7a57d0419579e9367da7a"
   integrity sha512-MaA6GVi59mH3YRkV5iJPcpdS9opMTgFvcfMQLzKeMJvEQvM2fFGMVixp+q2U6Pa8iJsCp59CUoTyuQQdkw1UFw==
   dependencies:
     "@jupyterlab/apputils" "^3.0.9"

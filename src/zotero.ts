@@ -1,4 +1,9 @@
-import { ICitableData, ICitationManager, IReferenceProvider } from './types';
+import {
+  ICitableData,
+  ICitationManager,
+  IProgress,
+  IReferenceProvider
+} from './types';
 import {
   JupyterFrontEnd,
   JupyterFrontEndPlugin
@@ -16,6 +21,9 @@ import {
 } from '@jupyterlab/translation';
 import { IStateDB } from '@jupyterlab/statedb';
 import { ReadonlyPartialJSONObject } from '@lumino/coreutils';
+import { Signal } from '@lumino/signaling';
+import { UpdateProgress } from './progressbar';
+import { IStatusBar } from '@jupyterlab/statusbar';
 
 export const zoteroIcon = new LabIcon({
   name: 'citation:zotero',
@@ -35,19 +43,22 @@ interface ILink {
   url: string;
 }
 
-type Rel = 'next' | 'last' | 'alternate';
+type Rel = 'first' | 'prev' | 'next' | 'last' | 'alternate';
 
-function parseLinks(links: string): Map<Rel, ILink> {
+export function parseLinks(links: string): Map<Rel, ILink> {
   const result = new Map();
   for (const link_data of links.split(',')) {
     const link = link_data.split(';');
-    const url = link[0].slice(1, -1);
+    const url = /<(.*?)>/.exec(link[0]);
+    if (!url) {
+      throw 'Could not parse URL of Zotero link';
+    }
     const relMatch = / ?rel="(.*?)"/.exec(link[1]);
     if (!relMatch) {
       throw 'Could not parse rel of Zotero link';
     }
     const rel = relMatch[1];
-    result.set(rel, { rel, url });
+    result.set(rel, { rel, url: url[1] });
   }
 
   return result;
@@ -152,13 +163,16 @@ export class ZoteroClient implements IReferenceProvider {
    * Do not bump the version if extra information is stored; instead
    * prefer checking if it is present (conditional action).
    */
-  private persistentCacheVersion = '0';
+  private persistentCacheVersion = '0..';
+
+  progress: Signal<any, IProgress>;
 
   constructor(
     protected settings: ISettings,
     protected trans: TranslationBundle,
     protected state: IStateDB | null
   ) {
+    this.progress = new Signal(this);
     this.citableItems = new Map();
     settings.changed.connect(this.updateSettings, this);
     const initialPreparations: Promise<any>[] = [this.updateSettings(settings)];
@@ -296,11 +310,28 @@ export class ZoteroClient implements IReferenceProvider {
 
   // TODO add this as a button in the sidebar
   public async updatePublications(): Promise<ICitableData[]> {
+    const progressBase: Partial<IProgress> = {
+      label: this.trans.__('Zotero sync.'),
+      tooltip: this.trans.__(
+        'Connector for Zotero is synchronizing references...'
+      )
+    };
+    this.progress.emit({ ...progressBase, state: 'started' });
     const publications = await this.loadAll(
       'users/' + this._user?.id + '/items',
       'csljson',
-      'items'
-    );
+      'items',
+      true,
+      progress => {
+        this.progress.emit({
+          ...progressBase,
+          state: 'ongoing',
+          value: progress
+        });
+      }
+    ).finally(() => {
+      this.progress.emit({ ...progressBase, state: 'completed' });
+    });
     if (publications) {
       console.log(`Fetched ${publications?.length} citable items from Zotero`);
       this.citableItems = new Map(
@@ -353,7 +384,6 @@ export class ZoteroClient implements IReferenceProvider {
     let i = 0;
     let done = false;
     while (!done && i <= total) {
-      i += 1;
       if (!result) {
         console.log('Could not retrieve all pages for ', endpoint);
         return;
@@ -363,26 +393,30 @@ export class ZoteroClient implements IReferenceProvider {
       console.log('links', links);
       const next = links.get('next')?.url;
       if (next) {
-        console.log(
-          'params for next',
-          Object.fromEntries(
-            new URLSearchParams(new URL(next).search).entries()
-          )
+        const nextParams = Object.fromEntries(
+          new URLSearchParams(new URL(next).search).entries()
         );
+        if (nextParams.start) {
+          i += parseInt(nextParams.start, 10);
+          if (progress) {
+            progress((100 * i) / total);
+          }
+        }
         result = await this.fetch(
           endpoint,
           {
-            ...Object.fromEntries(
-              new URLSearchParams(new URL(next).search).entries()
-            ),
+            ...nextParams,
             format: format
           },
-          isMultiObjectRequest
+          isMultiObjectRequest,
+          // do not add library version condition in follow up requests (we did not fetch entire library yet)
+          true
         );
-        // TODO: remove short circuit in future it is just here to iterate fast:
-        done = true;
       } else {
         done = true;
+        if (progress) {
+          progress(100);
+        }
       }
     }
     const results = [];
@@ -426,14 +460,15 @@ export class ZoteroClient implements IReferenceProvider {
 export const zoteroPlugin: JupyterFrontEndPlugin<void> = {
   id: PLUGIN_ID,
   requires: [ICitationManager, ISettingRegistry],
-  optional: [ITranslator, IStateDB],
+  optional: [ITranslator, IStateDB, IStatusBar],
   autoStart: true,
   activate: (
     app: JupyterFrontEnd,
     manager: ICitationManager,
     settingRegistry: ISettingRegistry,
     translator: ITranslator | null,
-    state: IStateDB | null
+    state: IStateDB | null,
+    statusBar: IStatusBar | null
   ) => {
     console.log('JupyterLab citation manager provider of Zotero is activated!');
     translator = translator || nullTranslator;
@@ -449,6 +484,12 @@ export const zoteroPlugin: JupyterFrontEndPlugin<void> = {
           'jupyterlab-citation-manager:zotero settings loaded:',
           settings.composite
         );
+
+        if (statusBar) {
+          statusBar.registerStatusItem(PLUGIN_ID, {
+            item: new UpdateProgress(client.progress)
+          });
+        }
       })
       .catch(reason => {
         console.error(

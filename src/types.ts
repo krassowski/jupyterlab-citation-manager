@@ -3,6 +3,7 @@ import { Token } from '@lumino/coreutils';
 import { DocumentWidget } from '@jupyterlab/docregistry';
 import { LabIcon } from '@jupyterlab/ui-components';
 import IIcon = LabIcon.IIcon;
+import {ISignal} from "@lumino/signaling";
 
 export type ICitableData = CslData[0];
 
@@ -126,6 +127,13 @@ export interface ICitation extends Partial<ICitableData> {
   text: string;
 }
 
+export interface IProgress {
+  state: 'started' | 'ongoing' | 'completed';
+  label?: string;
+  tooltip?: string;
+  value?: number;
+}
+
 /**
  * A provider of references such as Zotero, EndNote, Mendeley, etc.
  */
@@ -142,6 +150,7 @@ export interface IReferenceProvider {
   citableItems: Map<string | number, ICitableData>;
   updatePublications(): Promise<ICitableData[]>;
   isReady: Promise<any>;
+  progress?: ISignal<any, IProgress>;
   // getCollections?(): Promise<Map<string, ICitableData[]>>;
 }
 
