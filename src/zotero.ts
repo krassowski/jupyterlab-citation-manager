@@ -49,21 +49,87 @@ function parseLinks(links: string): Map<Rel, ILink> {
   return result;
 }
 
+interface IZoteroRequestHeaders {
+  'Zotero-API-Key': string;
+  'Zotero-API-Version'?: string;
+  'If-Modified-Since-Version'?: string;
+}
+
+class ZoteroResponseHeaders {
+  /**
+   * Time that the server requests us to back off if under high load.
+   */
+  backoffSeconds: number | null;
+  /**
+   * Last modified version of library or item (depending on request).
+   */
+  lastModifiedVersion: string | null;
+  /**
+   * API version that the server uses (may be newer than ours).
+   */
+  apiVersion: string | null;
+
+  private parseIntIfPresent(name: string): number | null {
+    const backoff = this.headers.get(name);
+    if (backoff) {
+      try {
+        return parseInt(backoff, 10);
+      } catch (error) {
+        console.warn(
+          'Failed to parse backoff time from Zotero API response headers'
+        );
+        return null;
+      }
+    } else {
+      return null;
+    }
+  }
+
+  constructor(protected headers: Headers) {
+    this.backoffSeconds = this.parseIntIfPresent('Backoff');
+    this.lastModifiedVersion = this.headers.get('Last-Modified-Version');
+    this.apiVersion = this.headers.get('Zotero-API-Version');
+  }
+}
+
+/**
+ * Zotero client implementing the Zotero Web API protocol in v3.
+ */
 export class ZoteroClient implements IReferenceProvider {
   id = 'zotero';
   name = 'Zotero';
   icon = zoteroIcon;
-  private serverURL: string | null = null;
-  private key: string | null = null;
-  private user: IUser | null = null;
+
+  private _serverURL: string | null = null;
+  private _key: string | null = null;
+  private _user: IUser | null = null;
+  /**
+   * Version number from API representing the library version,
+   * as returned in `Last-Modified-Version` of response header
+   * for multi-item requests.
+   *
+   * Note: responses for single-item requests will have item versions rather
+   * than global library versions, please do not write those onto this variable.
+   *
+   * https://www.zotero.org/support/dev/web_api/v3/syncing#version_numbers
+   */
+  lastModifiedLibraryVersion: string | null = null;
   publications: Map<string, ICitableData>;
   isReady: Promise<any>;
   /**
    * If the API requests us to backoff we should wait given number of seconds before making a subsequent request.
    *
    * This promise will resolve once the backoff time passed.
+   *
+   * https://www.zotero.org/support/dev/web_api/v3/basics#rate_limiting
    */
-  backoffPassed: Promise<void>;
+  protected backoffPassed: Promise<void>;
+  /**
+   * The Zotero Web API version that we support
+   *
+   * https://www.zotero.org/support/dev/web_api/v3/basics#api_versioning
+   */
+  protected apiVersion = '3';
 
   constructor(
     protected settings: ISettings,
@@ -78,10 +144,15 @@ export class ZoteroClient implements IReferenceProvider {
     this.publications = new Map();
   }
 
-  private async fetch(endpoint: string, args: Record<string, string> = {}) {
-    if (!this.key) {
+  private async fetch(
+    endpoint: string,
+    args: Record<string, string> = {},
+    isMultiObjectRequest = false,
+    forceUpdate = false
+  ) {
+    if (!this._key) {
       const userKey = await InputDialog.getPassword({
-        title: this.trans.__('Configure Zotero API Access key'),
+        title: this.trans.__('Configure Zotero API Access _key'),
         label: this.trans.__(
           `In order to access your Zotero collection you need to configure Zotero API key.
           You can generate the API key after logging to www.zotero.org.
@@ -89,46 +160,68 @@ export class ZoteroClient implements IReferenceProvider {
         )
       });
       if (userKey.value) {
-        this.key = userKey.value;
-        this.settings.set('key', this.key).catch(console.warn);
+        this._key = userKey.value;
+        this.settings.set('_key', this._key).catch(console.warn);
       } else {
         return;
       }
+    }
+
+    const requestHeaders: IZoteroRequestHeaders = {
+      'Zotero-API-Key': this._key,
+      'Zotero-API-Version': this.apiVersion
+    };
+
+    if (
+      !forceUpdate &&
+      isMultiObjectRequest &&
+      this.lastModifiedLibraryVersion
+    ) {
+      requestHeaders['If-Modified-Since-Version'] =
+        this.lastModifiedLibraryVersion;
     }
 
     // wait until the backoff time passed;
     await this.backoffPassed;
 
     return fetch(
-      this.serverURL + '/' + endpoint + '?' + new URLSearchParams(args),
+      this._serverURL + '/' + endpoint + '?' + new URLSearchParams(args),
       {
         method: 'GET',
-        headers: {
-          // 'Content-Type': 'application/json',
-          'Zotero-API-Key': this.key,
-          'Zotero-API-Version': '3'
-        }
+        headers: requestHeaders as any
       }
     ).then(response => {
-      this.handleBackoff(response.headers);
+      this.processResponseHeaders(response.headers, isMultiObjectRequest);
       return response;
     });
   }
 
-  protected handleBackoff(headers: Headers): void {
-    const backoff = headers.get('Backoff');
-    if (backoff) {
+  protected processResponseHeaders(
+    headers: Headers,
+    fromMultiObjectRequest: boolean
+  ): void {
+    const zoteroHeaders = new ZoteroResponseHeaders(headers);
+    this.handleBackoff(zoteroHeaders.backoffSeconds);
+    if (fromMultiObjectRequest && zoteroHeaders.lastModifiedVersion) {
+      // this is the library version only if we had multi-version request
+      this.lastModifiedLibraryVersion = zoteroHeaders.lastModifiedVersion;
+    }
+    if (
+      zoteroHeaders.apiVersion &&
+      zoteroHeaders.apiVersion !== this.apiVersion
+    ) {
+      console.warn(
+        `Zotero servers moved to a newer version API (${zoteroHeaders.apiVersion},` +
+          ` but this client only supports ${this.apiVersion});` +
+          ' please consider contributing a code to update this client to use the latest API'
+      );
+    }
+  }
+
+  protected handleBackoff(seconds: number | null): void {
+    if (seconds) {
       this.backoffPassed = new Promise<void>(accept => {
-        let backoffSeconds: number;
-        try {
-          backoffSeconds = parseInt(backoff, 10);
-        } catch (error) {
-          console.warn(
-            'Failed to parse backoff time from Zotero API response headers'
-          );
-          return;
-        }
-        window.setTimeout(accept, backoffSeconds);
+        window.setTimeout(accept, seconds);
       });
     }
   }
@@ -137,7 +230,7 @@ export class ZoteroClient implements IReferenceProvider {
   public async updatePublications(): Promise<ICitableData[]> {
     // TODO implement caching 503 and rate-limiting/debouncing
     const publications = await this.loadAll(
-      'users/' + this.user?.id + '/items',
+      'users/' + this._user?.id + '/items',
       'csljson',
       'items'
     );
@@ -210,14 +303,14 @@ export class ZoteroClient implements IReferenceProvider {
   }
 
   private reloadKey() {
-    return this.fetch('keys/' + this.key).then(response => {
+    return this.fetch('keys/' + this._key).then(response => {
       if (!response) {
         console.error(response);
         return;
       }
       return response.json().then(result => {
         console.log(result);
-        this.user = {
+        this._user = {
           name: result.username,
           id: result.userID
         };
@@ -227,8 +320,8 @@ export class ZoteroClient implements IReferenceProvider {
   }
 
   private updateSettings(settings: ISettings) {
-    this.key = settings.composite.key as string;
-    this.serverURL = settings.composite.server as string;
+    this._key = settings.composite.key as string;
+    this._serverURL = settings.composite.server as string;
     return this.reloadKey();
   }
 }
