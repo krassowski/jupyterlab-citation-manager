@@ -58,6 +58,12 @@ export class ZoteroClient implements IReferenceProvider {
   private user: IUser | null = null;
   publications: Map<string, ICitableData>;
   isReady: Promise<any>;
+  /**
+   * If the API requests us to backoff we should wait given number of seconds before making a subsequent request.
+   *
+   * This promise will resolve once the backoff time passed.
+   */
+  backoffPassed: Promise<void>;
 
   constructor(
     protected settings: ISettings,
@@ -65,6 +71,10 @@ export class ZoteroClient implements IReferenceProvider {
   ) {
     settings.changed.connect(this.updateSettings, this);
     this.isReady = this.updateSettings(settings);
+    // no backoff to start with
+    this.backoffPassed = new Promise(accept => {
+      accept();
+    });
     this.publications = new Map();
   }
 
@@ -86,6 +96,9 @@ export class ZoteroClient implements IReferenceProvider {
       }
     }
 
+    // wait until the backoff time passed;
+    await this.backoffPassed;
+
     return fetch(
       this.serverURL + '/' + endpoint + '?' + new URLSearchParams(args),
       {
@@ -96,7 +109,28 @@ export class ZoteroClient implements IReferenceProvider {
           'Zotero-API-Version': '3'
         }
       }
-    );
+    ).then(response => {
+      this.handleBackoff(response.headers);
+      return response;
+    });
+  }
+
+  protected handleBackoff(headers: Headers): void {
+    const backoff = headers.get('Backoff');
+    if (backoff) {
+      this.backoffPassed = new Promise<void>(accept => {
+        let backoffSeconds: number;
+        try {
+          backoffSeconds = parseInt(backoff, 10);
+        } catch (error) {
+          console.warn(
+            'Failed to parse backoff time from Zotero API response headers'
+          );
+          return;
+        }
+        window.setTimeout(accept, backoffSeconds);
+      });
+    }
   }
 
   // TODO add this as a button in the sidebar
