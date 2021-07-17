@@ -19,7 +19,9 @@ export class StyleSelector extends Selector<IStyleOption, IStyleOptionMatch> {
    * Fields that will be used to filter down the initial list of citation styles.
    *
    * More styles will become available once you start typing.
-   * TODO: make this user-customizable in settings?
+   * TODO: make this user-customizable in settings? this can be also used for sorting
+   *   (extra point for generic-base plus extra points for each user-specified field);
+   *   would be good to have a list of all possible fields to validate the settings.
    */
   preferredFields: string[] = ['generic-base'];
 

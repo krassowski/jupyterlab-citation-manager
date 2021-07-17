@@ -92,7 +92,8 @@ export class ZoteroClient implements IReferenceProvider {
         method: 'GET',
         headers: {
           // 'Content-Type': 'application/json',
-          'Zotero-API-Key': this.key
+          'Zotero-API-Key': this.key,
+          'Zotero-API-Version': '3'
         }
       }
     );
