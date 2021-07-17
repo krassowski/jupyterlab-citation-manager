@@ -43,9 +43,9 @@ def _extract_info(path, ns='{http://purl.org/net/xbiblio/csl}'):
     return {
         'id': info.find(f'{ns}id').text,
         'title': info.find(f'{ns}title').text,
-        'shortTitle': short_title.text if short_title else None,
-        'rights': rights.text if rights else None,
-        'license': rights.attrib.get('license', None) if rights else None,
+        'shortTitle': short_title.text if short_title is not None else None,
+        'rights': rights.text if rights is not None else None,
+        'license': rights.attrib.get('license', None) if rights is not None else None,
         'authors': get_names(authors),
         # TODO: test with csl-styles/academy-of-management-review.csl (contributors) and apa.csl (no contributors)
         'contributors': get_names(contributors),
@@ -106,7 +106,7 @@ def discover_styles(server_app: JupyterApp):
     for path in data_paths:
         styles.extend(_scan_for_styles(path, server_app.log))
 
-    server_app.log.info(f"Located CSL styles for Citation Manager: {styles}")
+    server_app.log.info(f"Located CSL {len(styles)} styles for Citation Manager.")
     return styles
 
 

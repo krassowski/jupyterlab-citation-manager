@@ -9,6 +9,7 @@ import { Message } from '@lumino/messaging';
 import { Signal } from '@lumino/signaling';
 import { searchIcon } from '@jupyterlab/ui-components';
 import { ElementExt } from '@lumino/domutils';
+import { UUID } from '@lumino/coreutils';
 
 export interface IOption<D = any, M = any> {
   id: string;
@@ -17,6 +18,10 @@ export interface IOption<D = any, M = any> {
 }
 
 const ACTIVE_CLASS = 'cm-mod-active';
+
+export function anonymousMark(match: string): JSX.Element {
+  return <mark key={UUID.uuid4()}>{match}</mark>;
+}
 
 export abstract class Selector<O, M> extends ReactWidget {
   private _query: string;

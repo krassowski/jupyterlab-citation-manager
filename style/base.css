@@ -75,6 +75,9 @@
 
 .cm-Option-content {
     display: flex;
+}
+
+.cm-CitationSelector .cm-Option-content {
     flex-direction: column;
 }
 

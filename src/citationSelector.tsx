@@ -2,8 +2,7 @@ import IMatchResult = StringExt.IMatchResult;
 import { StringExt } from '@lumino/algorithm';
 import * as React from 'react';
 import { ICitableData, ICitationOption } from './types';
-import { IOption, Selector } from './selector';
-import { UUID } from '@lumino/coreutils';
+import { anonymousMark, IOption, Selector } from './selector';
 import { TranslationBundle } from '@jupyterlab/translation';
 import { NameVariable } from './_csl_data';
 
@@ -15,10 +14,6 @@ interface ICitationOptionMatch {
   title: IMatchResult | null;
   year: IYearMatch | null;
   creators: (IMatchResult | null)[] | null;
-}
-
-function anonymousMark(match: string) {
-  return <mark key={UUID.uuid4()}>{match}</mark>;
 }
 
 function CitationOptionTitle(props: {
@@ -127,6 +122,7 @@ export class CitationSelector extends Selector<
     super();
     this.placeholder = trans.__('Start typing title, author, or year');
     this.typeNames = translateTypeLabels(trans);
+    this.addClass('cm-CitationSelector');
   }
 
   createID(option: ICitationOption): string {
