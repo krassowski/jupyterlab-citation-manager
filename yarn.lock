@@ -513,7 +513,7 @@
 
 "@jupyterlab/statedb@^3.0.6":
   version "3.0.6"
-  resolved "https://registry.npmjs.org/@jupyterlab/statedb/-/statedb-3.0.6.tgz"
+  resolved "https://registry.yarnpkg.com/@jupyterlab/statedb/-/statedb-3.0.6.tgz#d331c815496f80083d53277e1972095da954f31f"
   integrity sha512-hXewp5TAKneWJcYXenTZuzSUagGjyWv5vRHDFarw1O4pkEg7zz8IyN2yAvbYH6+GDqIhF/91rgGu9alkx/yjjA==
   dependencies:
     "@lumino/commands" "^1.12.0"

@@ -14,12 +14,16 @@ import {
   nullTranslator,
   TranslationBundle
 } from '@jupyterlab/translation';
+import { IStateDB } from '@jupyterlab/statedb';
+import { ReadonlyPartialJSONObject } from '@lumino/coreutils';
 
 export const zoteroIcon = new LabIcon({
   name: 'citation:zotero',
   // TODO: add proper zotero icon? There are some trademark considerations, may need an email first...
   svgstr: zoteroSvg
 });
+
+const PLUGIN_ID = 'jupyterlab-citation-manager:zotero';
 
 interface IUser {
   name: string;
@@ -92,6 +96,15 @@ class ZoteroResponseHeaders {
   }
 }
 
+interface IZoteroPersistentCacheState extends ReadonlyPartialJSONObject {
+  lastModifiedLibraryVersion: string | null;
+  persistentCacheVersion: string | null;
+  apiVersion: string | null;
+  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+  // @ts-ignore
+  citableItems: Record<string, ICitableData>;
+}
+
 /**
  * Zotero client implementing the Zotero Web API protocol in v3.
  */
@@ -114,7 +127,7 @@ export class ZoteroClient implements IReferenceProvider {
    * https://www.zotero.org/support/dev/web_api/v3/syncing#version_numbers
    */
   lastModifiedLibraryVersion: string | null = null;
-  publications: Map<string, ICitableData>;
+  citableItems: Map<string, ICitableData>;
   isReady: Promise<any>;
   /**
    * If the API requests us to backoff we should wait given number of seconds before making a subsequent request.
@@ -131,17 +144,72 @@ export class ZoteroClient implements IReferenceProvider {
    */
   protected apiVersion = '3';
 
+  /**
+   * Bump this version if changing the structure/type of data stored
+   * in the StateDB if the change would invalidate the existing data
+   * (e.g. CSL version updates); this should make updates safe.
+   *
+   * Do not bump the version if extra information is stored; instead
+   * prefer checking if it is present (conditional action).
+   */
+  private persistentCacheVersion = '0';
+
   constructor(
     protected settings: ISettings,
-    protected trans: TranslationBundle
+    protected trans: TranslationBundle,
+    protected state: IStateDB | null
   ) {
+    this.citableItems = new Map();
     settings.changed.connect(this.updateSettings, this);
-    this.isReady = this.updateSettings(settings);
+    const initialPreparations: Promise<any>[] = [this.updateSettings(settings)];
+    if (state) {
+      initialPreparations.push(this.restoreStateFromCache(state));
+    }
+    this.isReady = Promise.all(initialPreparations);
     // no backoff to start with
     this.backoffPassed = new Promise(accept => {
       accept();
     });
-    this.publications = new Map();
+  }
+
+  private async restoreStateFromCache(state: IStateDB) {
+    return new Promise<void>(accept => {
+      state
+        .fetch(PLUGIN_ID)
+        .then(JSONResult => {
+          if (!JSONResult) {
+            console.log(
+              'No previous state found for Zotero in the StateDB (it is normal on first run)'
+            );
+          } else {
+            const result = JSONResult as IZoteroPersistentCacheState;
+            if (result.apiVersion && result.apiVersion !== this.apiVersion) {
+              // do not restore from cache if Zotero API version changed
+              return;
+            }
+            if (
+              result.persistentCacheVersion &&
+              result.persistentCacheVersion !== this.persistentCacheVersion
+            ) {
+              // do not restore from cache if we changed the structure of cache
+              return;
+            }
+            // restore from cache
+            this.lastModifiedLibraryVersion = result.lastModifiedLibraryVersion;
+            if (result.citableItems) {
+              this.citableItems = new Map([
+                ...Object.entries(result.citableItems)
+              ]);
+              console.log(
+                `Restored ${this.citableItems.size} citable items from cache`
+              );
+            }
+          }
+        })
+        .catch(console.warn)
+        // always resolve this one (if cache is not present or corrupted we can always fetch from the server)
+        .finally(() => accept());
+    });
   }
 
   private async fetch(
@@ -228,30 +296,57 @@ export class ZoteroClient implements IReferenceProvider {
 
   // TODO add this as a button in the sidebar
   public async updatePublications(): Promise<ICitableData[]> {
-    // TODO implement caching 503 and rate-limiting/debouncing
+    // TODO handle 304 Not Modified (already sending proper header, just not integrated handling into the logic yet)
     const publications = await this.loadAll(
       'users/' + this._user?.id + '/items',
       'csljson',
       'items'
     );
-    console.log(publications);
-    this.publications = new Map(
-      (publications || []).map(item => {
-        console.log(item);
-        const data = item as ICitableData;
-        return [data.id + '', data];
-      })
-    );
-    return [...this.publications.values()];
+    if (publications) {
+      console.log(`Fetched ${publications?.length} citable items from Zotero`);
+      this.citableItems = new Map(
+        (publications || []).map(item => {
+          const data = item as ICitableData;
+          return [data.id + '', data];
+        })
+      );
+      this.updateCacheState().catch(console.warn);
+    } else {
+      console.log('No new items fetched from Zotero');
+    }
+    return [...this.citableItems.values()];
+  }
+
+  protected async updateCacheState(): Promise<any> {
+    if (!this.state) {
+      return;
+    }
+    const state: IZoteroPersistentCacheState = {
+      persistentCacheVersion: this.persistentCacheVersion,
+      apiVersion: this.apiVersion,
+      lastModifiedLibraryVersion: this.lastModifiedLibraryVersion,
+      citableItems: Object.fromEntries(this.citableItems)
+    } as IZoteroPersistentCacheState;
+    console.log(state);
+    return this.state.save(PLUGIN_ID, state);
   }
 
   private async loadAll(
     endpoint: string,
     format = 'csljson',
     extract?: string,
+    isMultiObjectRequest = true,
     progress?: (progress: number) => void
   ) {
-    let result = await this.fetch(endpoint, { format: format });
+    let result = await this.fetch(
+      endpoint,
+      { format: format },
+      isMultiObjectRequest
+    );
+    if (result?.status === 304) {
+      console.log(`Received 304 status (${result?.statusText}), skipping...`);
+      return null;
+    }
     const responses = [];
     // TODO
     const total =
@@ -264,7 +359,6 @@ export class ZoteroClient implements IReferenceProvider {
         console.log('Could not retrieve all pages for ', endpoint);
         return;
       }
-      console.log(result);
       responses.push(result);
       const links = parseLinks(result?.headers.get('Link') as string);
       console.log('links', links);
@@ -276,12 +370,16 @@ export class ZoteroClient implements IReferenceProvider {
             new URLSearchParams(new URL(next).search).entries()
           )
         );
-        result = await this.fetch(endpoint, {
-          ...Object.fromEntries(
-            new URLSearchParams(new URL(next).search).entries()
-          ),
-          format: format
-        });
+        result = await this.fetch(
+          endpoint,
+          {
+            ...Object.fromEntries(
+              new URLSearchParams(new URL(next).search).entries()
+            ),
+            format: format
+          },
+          isMultiObjectRequest
+        );
         // TODO: remove short circuit in future it is just here to iterate fast:
         done = true;
       } else {
@@ -327,15 +425,16 @@ export class ZoteroClient implements IReferenceProvider {
 }
 
 export const zoteroPlugin: JupyterFrontEndPlugin<void> = {
-  id: 'jupyterlab-citation-manager:zotero',
+  id: PLUGIN_ID,
   requires: [ICitationManager, ISettingRegistry],
-  optional: [ITranslator],
+  optional: [ITranslator, IStateDB],
   autoStart: true,
   activate: (
     app: JupyterFrontEnd,
     manager: ICitationManager,
     settingRegistry: ISettingRegistry,
-    translator: ITranslator | null
+    translator: ITranslator | null,
+    state: IStateDB | null
   ) => {
     console.log('JupyterLab citation manager provider of Zotero is activated!');
     translator = translator || nullTranslator;
@@ -344,7 +443,7 @@ export const zoteroPlugin: JupyterFrontEndPlugin<void> = {
     settingRegistry
       .load(zoteroPlugin.id)
       .then(settings => {
-        const client = new ZoteroClient(settings, trans);
+        const client = new ZoteroClient(settings, trans, state);
         manager.registerReferenceProvider(client);
 
         console.log(

@@ -139,7 +139,7 @@ export interface IReferenceProvider {
    */
   name: string;
   icon: IIcon;
-  publications: Map<string | number, ICitableData>;
+  citableItems: Map<string | number, ICitableData>;
   updatePublications(): Promise<ICitableData[]>;
   isReady: Promise<any>;
   // getCollections?(): Promise<Map<string, ICitableData[]>>;

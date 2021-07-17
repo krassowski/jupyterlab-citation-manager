@@ -186,7 +186,7 @@ class UnifiedCitationManager implements ICitationManager {
     const addedFromProviders = new Set<string>();
 
     for (const provider of this.providers.values()) {
-      for (const publication of provider.publications.values()) {
+      for (const publication of provider.citableItems.values()) {
         const id = provider.id + '|' + publication.id;
         addedFromProviders.add(id);
         options.push({
@@ -390,7 +390,7 @@ class UnifiedCitationManager implements ICitationManager {
     const splitPos = id.indexOf('|');
     const provider = id.slice(0, splitPos);
     const key = id.slice(splitPos + 1);
-    const item = this.providers.get(provider)?.publications.get(key);
+    const item = this.providers.get(provider)?.citableItems.get(key);
     if (!item) {
       throw Error(`Provider did not provide item for ${key}`);
     }
