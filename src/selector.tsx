@@ -69,6 +69,8 @@ export abstract class Selector<O, M> extends ReactWidget {
     this._previousPromise = null;
     this.activeIndex = 0;
     this.addClass('cm-ModalSelector');
+    // required to receive blur and focus events
+    this.node.tabIndex = 0;
   }
 
   abstract matchOption(option: O, query: string): M;
@@ -136,15 +138,13 @@ export abstract class Selector<O, M> extends ReactWidget {
       case 'keydown':
         this._evtKeydown(event as KeyboardEvent);
         break;
-      case 'focus': {
+      case 'blur': {
         // if the focus shifted outside of this DOM element, hide and reset.
         const target = event.target as HTMLElement;
-        console.log('focus event', target);
-        if (!this.node.contains(target as HTMLElement)) {
+        if (this.node.contains(target as HTMLElement)) {
           console.log('resetting');
           event.stopPropagation();
-          // TODO
-          //this.hideAndReset();
+          this.hideAndReset();
         }
         break;
       }
@@ -267,19 +267,6 @@ export abstract class Selector<O, M> extends ReactWidget {
     super.onAfterAttach(msg);
     this.node.addEventListener('keydown', this, true);
     this.node.addEventListener('contextmenu', this, true);
-    if (this._input) {
-      console.log('focusing input');
-      this._input.focus();
-      window.setTimeout(() => {
-        const input = this._input;
-        if (!input) {
-          console.warn('Input went away before focusing');
-          return;
-        }
-        // notebook cells will try to steal the focus from selector - lets regain it immediately
-        input.focus();
-      }, 0);
-    }
   }
 
   /**
@@ -291,11 +278,23 @@ export abstract class Selector<O, M> extends ReactWidget {
   }
 
   protected onBeforeHide(msg: Message): void {
-    document.removeEventListener('focus', this, true);
+    document.removeEventListener('blur', this, true);
   }
 
   protected onAfterShow(msg: Message): void {
-    document.addEventListener('focus', this, true);
+    document.addEventListener('blur', this, true);
+    if (this._input) {
+      this._input.focus();
+      window.setTimeout(() => {
+        const input = this._input;
+        if (!input) {
+          console.warn('Input went away before focusing');
+          return;
+        }
+        // notebook cells will try to steal the focus from selector - lets regain it immediately
+        input.focus();
+      }, 0);
+    }
   }
 
   /**
