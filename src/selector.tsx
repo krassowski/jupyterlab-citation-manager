@@ -10,6 +10,7 @@ import { Signal } from '@lumino/signaling';
 import { searchIcon } from '@jupyterlab/ui-components';
 import { ElementExt } from '@lumino/domutils';
 import { UUID } from '@lumino/coreutils';
+import { Debouncer } from '@lumino/polling';
 
 export interface IOption<D = any, M = any> {
   id: string;
@@ -23,6 +24,19 @@ export function anonymousMark(match: string): JSX.Element {
   return <mark key={UUID.uuid4()}>{match}</mark>;
 }
 
+export namespace Selector {
+  export interface IConfiguration {
+    /**
+     * How long should the debouncer wait (ms)?
+     */
+    debounceRate?: number;
+    /**
+     * Debounce if as many options are to be displayed
+     */
+    debounceOptionNumberThreshold?: number;
+  }
+}
+
 export abstract class Selector<O, M> extends ReactWidget {
   private _query: string;
   private _filteredOptions: IOption<O, M>[];
@@ -33,9 +47,19 @@ export abstract class Selector<O, M> extends ReactWidget {
   private _input: HTMLInputElement | null = null;
   protected options: O[];
   protected activeIndex: number;
+  protected defaultConfig: Selector.IConfiguration = {
+    debounceRate: 250,
+    debounceOptionNumberThreshold: 200
+  };
+  protected _config: Selector.IConfiguration;
+  private _debouncedChanged: Debouncer;
 
-  protected constructor() {
+  protected constructor(config: Selector.IConfiguration = {}) {
     super();
+    this._config = { ...this.defaultConfig, ...config };
+    this._debouncedChanged = new Debouncer(() => {
+      this.emitChangedSignal();
+    }, this._config.debounceRate);
     this._query = '';
     this.options = [];
     this._optionsChanged = new Signal(this);
@@ -51,6 +75,10 @@ export abstract class Selector<O, M> extends ReactWidget {
   abstract filterOption(option: IOption<O, M>): boolean;
   abstract sortOptions(a: IOption<O, M>, b: IOption<O, M>): number;
   placeholder = 'Search';
+
+  protected emitChangedSignal(): void {
+    this._optionsChanged.emit(this._filteredOptions);
+  }
 
   getItem(options: O[]): Promise<O> {
     if (this._previousPromise) {
@@ -163,7 +191,7 @@ export abstract class Selector<O, M> extends ReactWidget {
     if (optionsNodes.length) {
       optionsNodes[this.activeIndex].classList.add(ACTIVE_CLASS);
     }
-    this._optionsChanged.emit(this._filteredOptions);
+    this._debouncedChanged.invoke().catch(console.warn);
   }
 
   protected renderOption(props: { option: IOption<O, M> }): JSX.Element {
@@ -240,7 +268,17 @@ export abstract class Selector<O, M> extends ReactWidget {
     this.node.addEventListener('keydown', this, true);
     this.node.addEventListener('contextmenu', this, true);
     if (this._input) {
+      console.log('focusing input');
       this._input.focus();
+      window.setTimeout(() => {
+        const input = this._input;
+        if (!input) {
+          console.warn('Input went away before focusing');
+          return;
+        }
+        // notebook cells will try to steal the focus from selector - lets regain it immediately
+        input.focus();
+      }, 0);
     }
   }
 

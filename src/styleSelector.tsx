@@ -80,13 +80,16 @@ export class StyleSelector extends Selector<IStyleOption, IStyleOptionMatch> {
       <div className={'cm-Option-content'}>
         <span className={'cm-short-title'}>
           {info.shortTitle
-            ? (match && match.shortTitle
-                ? StringExt.highlight(
-                    info.shortTitle,
-                    match.shortTitle.indices,
-                    anonymousMark
-                  )
-                : info.shortTitle) + ': '
+            ? [
+                match && match.shortTitle
+                  ? StringExt.highlight(
+                      info.shortTitle,
+                      match.shortTitle.indices,
+                      anonymousMark
+                    )
+                  : info.shortTitle,
+                ': '
+              ]
             : ''}
         </span>
         <span className={'cm-title'}>

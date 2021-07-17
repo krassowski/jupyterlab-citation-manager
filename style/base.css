@@ -28,7 +28,7 @@
 }
 
 .cm-SearchField-wrapper {
-    overflow: overlay;
+    overflow: auto;
     padding: 0px 9px;
     background-color: var(--jp-input-active-background);
     height: 30px;
@@ -168,6 +168,14 @@ cite {
 
 .cm-source-zotero {
     color: red;
+}
+
+.cm-short-title {
+    white-space: nowrap;
+}
+
+.cm-short-title:not(:empty) {
+    padding-right: 5px;
 }
 
 .cm-single-source .cm-source {
