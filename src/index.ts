@@ -25,7 +25,7 @@ import { zoteroPlugin } from './zotero';
 import { DefaultMap, harmonizeData, simpleRequest } from './utils';
 
 import * as CSL from 'citeproc';
-import { CitationSelector, ReferenceBrowser } from './citationSelector';
+import { CitationSelector } from './components/citationSelector';
 import {
   ITranslator,
   nullTranslator,
@@ -34,8 +34,9 @@ import {
 import { NotebookAdapter, NotebookButtons } from './adapters/notebook';
 import { ICommandPalette } from '@jupyterlab/apputils';
 import { requestAPI } from './handler';
-import { StyleSelector } from './styleSelector';
+import { StyleSelector } from './components/styleSelector';
 import { addCitationIcon, bibliographyIcon, bookshelfIcon } from './icons';
+import { ReferenceBrowser } from './components/referenceBrowser';
 
 const PLUGIN_ID = 'jupyterlab-citation-manager:plugin';
 

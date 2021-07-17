@@ -1,5 +1,5 @@
 import IMatchResult = StringExt.IMatchResult;
-import { IStyle } from './types';
+import { IStyle } from '../types';
 import { anonymousMark, IOption, ModalSelector } from './selector';
 import { TranslationBundle } from '@jupyterlab/translation';
 import { StringExt } from '@lumino/algorithm';

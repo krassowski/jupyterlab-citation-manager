@@ -1,7 +1,7 @@
 import { ReactWidget, UseSignal } from '@jupyterlab/apputils';
 import * as React from 'react';
 import { ISignal } from '@lumino/signaling';
-import { IProgress } from './types';
+import { IProgress } from '../types';
 import { ProgressBar } from '@jupyterlab/statusbar';
 
 export class UpdateProgress extends ReactWidget {

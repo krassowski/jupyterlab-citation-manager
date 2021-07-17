@@ -22,7 +22,7 @@ import {
 import { IStateDB } from '@jupyterlab/statedb';
 import { ReadonlyPartialJSONObject } from '@lumino/coreutils';
 import { Signal } from '@lumino/signaling';
-import { UpdateProgress } from './progressbar';
+import { UpdateProgress } from './components/progressbar';
 import { IStatusBar } from '@jupyterlab/statusbar';
 
 export const zoteroIcon = new LabIcon({
@@ -308,7 +308,6 @@ export class ZoteroClient implements IReferenceProvider {
     }
   }
 
-  // TODO add this as a button in the sidebar
   public async updatePublications(force = false): Promise<ICitableData[]> {
     const progressBase: Partial<IProgress> = {
       label: this.trans.__('Zotero sync.'),
