@@ -181,3 +181,21 @@ cite {
 .jp-Toolbar .addCitationButton .jp-ToolbarButtonComponent-label {
     display: none;
 }
+
+/*
+CSL requires styling the fields according to:
+https://docs.citationstyles.org/en/stable/specification.html#display
+
+Class names are automatically added by citeproc, though their names can be misleading
+as those refer to the display specification and not CSS display.
+
+There are things to look out for: https://forums.zotero.org/discussion/29220/citeproc-js-second-field-align
+
+TODO More styles are likely needed. It might be necessary to include these styles in-line
+  or somehow tell nbconvert to include them when exporting to HTML, PDF or anything else.
+ */
+
+.csl-left-margin {
+    float: left;
+    min-width: 1.5em;
+}
