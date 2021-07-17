@@ -60,7 +60,6 @@ def _extract_info(path, ns='{http://purl.org/net/xbiblio/csl}'):
 
 def _scan_for_styles(data_path, log: logging.Logger):
     p = Path(data_path)
-    print(p)
     style_files = list(p.glob('*.csl'))
     styles = []
     previous_identifiers = set()
@@ -106,7 +105,7 @@ def discover_styles(server_app: JupyterApp):
     for path in data_paths:
         styles.extend(_scan_for_styles(path, server_app.log))
 
-    server_app.log.info(f"Located CSL {len(styles)} styles for Citation Manager.")
+    server_app.log.info(f"Located {len(styles)} CSL styles for Citation Manager.")
     return styles
 
 
