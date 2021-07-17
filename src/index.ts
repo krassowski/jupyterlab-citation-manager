@@ -24,10 +24,6 @@ import {
 import { zoteroPlugin } from './zotero';
 import { DefaultMap, harmonizeData, simpleRequest } from './utils';
 
-import { LabIcon } from '@jupyterlab/ui-components';
-import addCitation from '../style/icons/book-plus.svg';
-import bibliography from '../style/icons/book-open-variant.svg';
-import bookshelf from '../style/icons/bookshelf.svg';
 import * as CSL from 'citeproc';
 import { CitationSelector, ReferenceBrowser } from './citationSelector';
 import {
@@ -39,21 +35,7 @@ import { NotebookAdapter, NotebookButtons } from './adapters/notebook';
 import { ICommandPalette } from '@jupyterlab/apputils';
 import { requestAPI } from './handler';
 import { StyleSelector } from './styleSelector';
-
-export const addCitationIcon = new LabIcon({
-  name: 'citation:add',
-  svgstr: addCitation
-});
-
-export const BibliographyIcon = new LabIcon({
-  name: 'citation:bibliography',
-  svgstr: bibliography
-});
-
-export const BookshelfIcon = new LabIcon({
-  name: 'citation:bookshelf',
-  svgstr: bookshelf
-});
+import { addCitationIcon, bibliographyIcon, bookshelfIcon } from './icons';
 
 const PLUGIN_ID = 'jupyterlab-citation-manager:plugin';
 
@@ -99,16 +81,15 @@ class UnifiedCitationManager implements ICitationManager {
   private styles: StylesManager;
   private processors: WeakMap<DocumentWidget, Promise<ICiteProcEngine>>;
   protected defaultStyleID = 'apa';
-  referenceBrowser: ReferenceBrowser;
 
   constructor(
     notebookTracker: INotebookTracker,
     settingsRegistry: ISettingRegistry | null,
-    protected trans: TranslationBundle
+    protected trans: TranslationBundle,
+    protected referenceBrowser: ReferenceBrowser
   ) {
     this.styles = new StylesManager(trans);
     this.selector = new CitationSelector(trans);
-    this.referenceBrowser = new ReferenceBrowser(trans);
     this.selector.hide();
     this.adapters = new WeakMap();
     this.processors = new WeakMap();
@@ -181,6 +162,14 @@ class UnifiedCitationManager implements ICitationManager {
 
   public registerReferenceProvider(provider: IReferenceProvider): void {
     this.providers.set(provider.id, provider);
+  }
+
+  public async updateReferences() {
+    return Promise.all(
+      [...this.providers.values()].map(provider =>
+        provider.updatePublications(true)
+      )
+    );
   }
 
   private collectOptions(existingCitations: ICitation[]): ICitationOption[] {
@@ -434,23 +423,29 @@ function addCommands(
   commandPalette: ICommandPalette | null
 ) {
   console.log('adding commands');
-  app.commands.addCommand(CommandIDs.insertCitation, {
-    label: trans.__('Insert citation'),
-    caption: trans.__(
-      'Insert citation at the current cursor position in the active document.'
-    ),
-    execute: () => {
+
+  const hasPanel = () => {
+    const panel = notebookTracker.currentWidget;
+    return !!panel;
+  };
+  const executeOnCurrent = (callback: (panel: NotebookPanel) => void) => {
+    return () => {
       const panel = notebookTracker.currentWidget;
       if (!panel) {
         console.warn('Panel not found for command');
         return;
       }
-      manager.addCitation(panel);
-    },
-    isEnabled: () => {
-      const panel = notebookTracker.currentWidget;
-      return !!panel;
-    },
+      callback(panel);
+    };
+  };
+
+  app.commands.addCommand(CommandIDs.insertCitation, {
+    label: trans.__('Insert citation'),
+    caption: trans.__(
+      'Insert citation at the current cursor position in the active document.'
+    ),
+    execute: executeOnCurrent(manager.addCitation.bind(manager)),
+    isEnabled: hasPanel,
     icon: addCitationIcon
   });
 
@@ -459,36 +454,22 @@ function addCommands(
     caption: trans.__(
       'Insert bibliography at the current cursor position in the active document.'
     ),
-    execute: () => {
-      const panel = notebookTracker.currentWidget;
-      if (!panel) {
-        console.warn('Panel not found for command');
-        return;
-      }
-      manager.addBibliography(panel).catch(console.warn);
-    },
-    isEnabled: () => {
-      const panel = notebookTracker.currentWidget;
-      return !!panel;
-    },
-    icon: BibliographyIcon
+    execute: executeOnCurrent(manager.addBibliography.bind(manager)),
+    isEnabled: hasPanel,
+    icon: bibliographyIcon
   });
 
   app.commands.addCommand(CommandIDs.changeBibliographyStyle, {
     label: trans.__('Change bibliography style'),
     caption: trans.__('Change bibliography style for the active document.'),
-    execute: () => {
-      const panel = notebookTracker.currentWidget;
-      if (!panel) {
-        console.warn('Panel not found for command');
-        return;
-      }
-      manager.changeStyle(panel);
-    },
-    isEnabled: () => {
-      const panel = notebookTracker.currentWidget;
-      return !!panel;
-    }
+    execute: executeOnCurrent(manager.changeStyle.bind(manager)),
+    isEnabled: hasPanel
+  });
+
+  app.commands.addCommand(CommandIDs.updateReferences, {
+    label: trans.__('Update references'),
+    caption: trans.__('Synchronise the references from all providers.'),
+    execute: manager.updateReferences.bind(manager)
   });
 
   if (commandPalette) {
@@ -503,6 +484,10 @@ function addCommands(
     });
     commandPalette.addItem({
       command: CommandIDs.changeBibliographyStyle,
+      category: category
+    });
+    commandPalette.addItem({
+      command: CommandIDs.updateReferences,
       category: category
     });
   }
@@ -529,22 +514,24 @@ const managerPlugin: JupyterFrontEndPlugin<ICitationManager> = {
     translator = translator || nullTranslator;
     const trans = translator.load('jupyterlab-citation-manager');
 
+    const referenceBrowser = new ReferenceBrowser(trans, app.commands);
+
     const manager = new UnifiedCitationManager(
       notebookTracker,
       settingRegistry,
-      trans
+      trans,
+      referenceBrowser
     );
 
     addCommands(app, notebookTracker, manager, trans, commandPalette);
 
     try {
-      manager.referenceBrowser.id =
-        'jupyterlab-citation-manager:reference-browser';
-      manager.referenceBrowser.title.icon = BookshelfIcon;
-      manager.referenceBrowser.title.caption = 'Reference Browser';
-      manager.referenceBrowser.show();
+      referenceBrowser.id = 'jupyterlab-citation-manager:reference-browser';
+      referenceBrowser.title.icon = bookshelfIcon;
+      referenceBrowser.title.caption = 'Reference Browser';
+      referenceBrowser.show();
       console.log('hello');
-      app.shell.add(manager.referenceBrowser, 'left', { rank: 850 });
+      app.shell.add(referenceBrowser, 'left', { rank: 850 });
     } catch (error) {
       console.warn(
         'Could not attach the reference browser to the sidebar',

@@ -397,7 +397,6 @@ export abstract class ModalSelector<O, M> extends Selector<O, M> {
         // if the focus shifted outside of this DOM element, hide and reset.
         const target = event.target as HTMLElement;
         if (this.node.contains(target as HTMLElement)) {
-          console.log('resetting');
           event.stopPropagation();
           this.hideAndReset();
         }

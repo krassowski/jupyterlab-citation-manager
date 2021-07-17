@@ -224,6 +224,20 @@ cite {
     border-color: var(--jp-layout-color4);
 }
 
+.cm-ReferenceBrowser .jp-Toolbar {
+    padding: 0px;
+    margin: 8px 12px 0px 12px;
+    box-shadow: none;
+    border-bottom: none;
+    height: auto;
+}
+
+.cm-ReferenceBrowser .jp-Toolbar .jp-Toolbar-item {
+    flex: 0 0 auto;
+    padding-left: 0px;
+    padding-right: 2px;
+}
+
 /*
 CSL requires styling the fields according to:
 https://docs.citationstyles.org/en/stable/specification.html#display

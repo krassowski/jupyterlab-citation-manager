@@ -3,7 +3,7 @@ import { Token } from '@lumino/coreutils';
 import { DocumentWidget } from '@jupyterlab/docregistry';
 import { LabIcon } from '@jupyterlab/ui-components';
 import IIcon = LabIcon.IIcon;
-import {ISignal} from "@lumino/signaling";
+import { ISignal } from '@lumino/signaling';
 
 export type ICitableData = CslData[0];
 
@@ -148,7 +148,11 @@ export interface IReferenceProvider {
   name: string;
   icon: IIcon;
   citableItems: Map<string | number, ICitableData>;
-  updatePublications(): Promise<ICitableData[]>;
+
+  /**
+   * @param force - whether to update even if recently updated
+   */
+  updatePublications(force?: boolean): Promise<ICitableData[]>;
   isReady: Promise<any>;
   progress?: ISignal<any, IProgress>;
   // getCollections?(): Promise<Map<string, ICitableData[]>>;
@@ -181,6 +185,8 @@ export interface ICitationManager extends ICitationSystem {
   registerReferenceProvider(provider: IReferenceProvider): void;
   addCitation(documentWidget: DocumentWidget): void;
   addBibliography(documentWidget: DocumentWidget): void;
+  changeStyle(documentWidget: DocumentWidget): void;
+  updateReferences(): Promise<any>;
 }
 
 export const ICitationManager = new Token<ICitationManager>(
@@ -190,7 +196,8 @@ export const ICitationManager = new Token<ICitationManager>(
 export enum CommandIDs {
   insertCitation = 'cm:insert-citation',
   insertBibliography = 'cm:insert-bibliography',
-  changeBibliographyStyle = 'cm:change-bibliography-style'
+  changeBibliographyStyle = 'cm:change-bibliography-style',
+  updateReferences = 'cm:update-references'
 }
 
 interface IStyleInfo {

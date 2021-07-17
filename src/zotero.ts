@@ -309,7 +309,7 @@ export class ZoteroClient implements IReferenceProvider {
   }
 
   // TODO add this as a button in the sidebar
-  public async updatePublications(): Promise<ICitableData[]> {
+  public async updatePublications(force = false): Promise<ICitableData[]> {
     const progressBase: Partial<IProgress> = {
       label: this.trans.__('Zotero sync.'),
       tooltip: this.trans.__(
@@ -322,6 +322,7 @@ export class ZoteroClient implements IReferenceProvider {
       'csljson',
       'items',
       true,
+      force,
       progress => {
         this.progress.emit({
           ...progressBase,
@@ -366,12 +367,14 @@ export class ZoteroClient implements IReferenceProvider {
     format = 'csljson',
     extract?: string,
     isMultiObjectRequest = true,
+    forceUpdate = false,
     progress?: (progress: number) => void
   ) {
     let result = await this.fetch(
       endpoint,
       { format: format },
-      isMultiObjectRequest
+      isMultiObjectRequest,
+      forceUpdate
     );
     if (result?.status === 304) {
       console.log(`Received 304 status (${result?.statusText}), skipping...`);

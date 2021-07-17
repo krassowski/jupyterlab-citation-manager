@@ -1,10 +1,13 @@
 import IMatchResult = StringExt.IMatchResult;
 import { StringExt } from '@lumino/algorithm';
 import * as React from 'react';
-import { ICitableData, ICitationOption } from './types';
+import { CommandIDs, ICitableData, ICitationOption } from './types';
 import { anonymousMark, IOption, ModalSelector, Selector } from './selector';
 import { TranslationBundle } from '@jupyterlab/translation';
 import { NameVariable } from './_csl_data';
+import { LabIcon, refreshIcon } from '@jupyterlab/ui-components';
+import { CommandRegistry } from '@lumino/commands';
+import { bibliographyIcon } from './icons';
 
 const CITATION_SELECTOR_CLASS = 'cm-CitationSelector';
 
@@ -252,6 +255,33 @@ export class CitationSelector extends ModalSelector<
   }
 }
 
+/**
+ * React component mimicking ToolbarButton from core.
+ */
+function ToolbarButton(props: {
+  icon: LabIcon;
+  execute: () => void;
+}): JSX.Element {
+  return (
+    <div
+      className={'lm-Widget jp-ToolbarButton jp-Toolbar-item'}
+      onClick={props.execute}
+    >
+      <button
+        className={
+          'bp3-button bp3-minimal jp-ToolbarButtonComponent minimal jp-Button'
+        }
+      >
+        <span className={'bp3-button-text'}>
+          <span className={'jp-ToolbarButtonComponent-icon'}>
+            <props.icon.react />
+          </span>
+        </span>
+      </button>
+    </div>
+  );
+}
+
 // TODO: well the model pattern would be more handy here - I can create the model once an re-use it as I wish;
 export class ReferenceBrowser extends Selector<
   ICitationOption,
@@ -259,7 +289,10 @@ export class ReferenceBrowser extends Selector<
 > {
   typeNames: Record<ICitableData['type'], string>;
 
-  constructor(protected trans: TranslationBundle) {
+  constructor(
+    protected trans: TranslationBundle,
+    protected commands: CommandRegistry
+  ) {
     super();
     this.placeholder = trans.__('Start typing title, author, or year');
     this.typeNames = translateTypeLabels(trans);
@@ -282,8 +315,18 @@ export class ReferenceBrowser extends Selector<
   render(): JSX.Element {
     return (
       <div className={'cm-ReferenceBrowser'}>
-        <div className={'cm-ButtonBar'}>
-          Refresh | Change style | Switch to Project Summary
+        <div className={'cm-ButtonBar jp-Toolbar jp-scrollbar-tiny'}>
+          <ToolbarButton
+            icon={refreshIcon}
+            execute={() => this.commands.execute(CommandIDs.updateReferences)}
+          />
+          <ToolbarButton
+            icon={bibliographyIcon}
+            execute={() =>
+              this.commands.execute(CommandIDs.changeBibliographyStyle)
+            }
+          />
+          <ToolbarButton icon={bibliographyIcon} execute={() => 0} />
         </div>
         {super.render()}
       </div>
