@@ -3,14 +3,40 @@
 ![Github Actions Status](https://github.com/krassowski/jupyterlab-citation-manager/workflows/Build/badge.svg)
 [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/krassowski/jupyterlab-citation-manager/main?urlpath=lab)
 
-Citation Manager for JupyterLab. Currently supports Zotero.
+Citation Manager for JupyterLab:
+- enables adding citations to Jupyter notebooks in Markdown cells,
+- keeps the bibliography in sync with the citations in the document,
+- supports thousands of citation styles,
+- offers a way to effectively search through your collection of references,
+- integrates with the Zotero® service (Connector for Zotero) by default,
+- is modular in design, allowing for integration of other reference managers in the future.
 
-Design goals:
+## Usage
 
-- make the inline-citations contain some information needed to build bibliography
-  should it be everything? maybe. But it should not occupy too much space in Markdown editor
-- users should be able to add citations manually by adding <cite>
-- the extension should allow integration with services other than zotero
+### Authenticate with Zotero
+
+To enable you to access your reference list you will need to obtain an access API key [from your Zotero account](https://www.zotero.org/settings/keys/new).
+The most basic, read-only key is sufficient (and recommended). The key will be stored in your settings, so you will only need to enter it once.
+
+### Insert citation
+
+Insert citation by clicking on the (ICON pic) or pressing <kbd>Alt</kbd> + <kbd>C</kbd> (shortcut is customizable).
+
+TODO GIF
+
+### Insert bibliography
+
+Insert bibliography by clicking on the (ICON pic) or pressing <kbd>Alt</kbd> + <kbd>B</kbd> (shortcut is customizable).
+
+TODO GIF
+
+### Change style
+
+Choose citation style by ...
+
+### Synchronise references
+
+TODO
 
 ## Requirements
 
@@ -32,7 +58,18 @@ To remove the extension, execute:
 pip uninstall jupyterlab-citation-manager
 ```
 
-## Citation styles
+
+## Advanced Usage
+
+### Add citations manually using `<cite>` tag
+
+TODO
+
+### Citation clusters
+
+TODO
+
+### Citation styles
 
 This extension includes thousands citation styles form the
 [official repository](https://github.com/citation-style-language/styles) of
@@ -46,7 +83,7 @@ jupyter --paths
 
 The `.csl` file should follow CSL v1.0.1 specification (see [official CSL specification](https://docs.citationstyles.org/en/stable/specification.html)).
 
-### Example
+#### Example
 
 If `jupyter --paths` looks like:
 
@@ -141,3 +178,26 @@ To update the version branch:
 git submodule set-branch --branch v1.0.1 csl-styles
 git commit csl-styles
 ```
+
+### Legal stuff
+
+#### Connector for Zotero
+
+Zotero is a registered trademark of the [Corporation for Digital Scholarship](http://digitalscholar.org/);
+our extension (Connector for Zotero) is not affiliated with the Corporation in any way.
+
+Once sufficient quality is reached we will try to contact the Corporation to ensure
+that they are happy with this extension, both on the API implementation side and on
+our (solely-informative) use of Zotero trademark.
+
+As the reference providers are standalone plugins we envision a future in which the
+Connector for Zotero plugin could be ceded to that the Corporation authority.
+
+#### CSL styles
+
+The CSL styles are contributed by individual authors to the CSL project; this extension
+
+#### Icons
+
+Please see the [`style/icons/README.md`](style/icons/README.md)
+for information on the licences of icons included in the distribution;
