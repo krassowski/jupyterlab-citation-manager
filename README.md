@@ -191,7 +191,8 @@ that they are happy with this extension, both on the API implementation side and
 our (solely-informative) use of Zotero trademark.
 
 As the reference providers are standalone plugins we envision a future in which the
-Connector for Zotero plugin could be ceded to that the Corporation authority.
+Connector for Zotero plugin could be ceded into the Corporation's authority, and
+solely focus this repository on providing the best, interoperable citation experience.
 
 #### CSL styles
 

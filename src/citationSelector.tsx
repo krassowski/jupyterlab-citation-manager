@@ -2,9 +2,11 @@ import IMatchResult = StringExt.IMatchResult;
 import { StringExt } from '@lumino/algorithm';
 import * as React from 'react';
 import { ICitableData, ICitationOption } from './types';
-import { anonymousMark, IOption, Selector } from './selector';
+import { anonymousMark, IOption, ModalSelector, Selector } from './selector';
 import { TranslationBundle } from '@jupyterlab/translation';
 import { NameVariable } from './_csl_data';
+
+const CITATION_SELECTOR_CLASS = 'cm-CitationSelector';
 
 interface IYearMatch {
   absoluteDifference: number;
@@ -112,41 +114,16 @@ function translateTypeLabels(
   };
 }
 
-export class CitationSelector extends Selector<
-  ICitationOption,
-  ICitationOptionMatch
-> {
-  typeNames: Record<ICitableData['type'], string>;
-
-  constructor(protected trans: TranslationBundle) {
-    super();
-    this.placeholder = trans.__('Start typing title, author, or year');
-    this.typeNames = translateTypeLabels(trans);
-    this.addClass('cm-CitationSelector');
-  }
-
-  createID(option: ICitationOption): string {
-    return (
-      'c-' +
-      (option.publication.id ||
-        option.publication.DOI ||
-        option.publication.title ||
-        super.createID(option))
-    );
-  }
-
-  filterOption(
-    option: IOption<ICitationOption, ICitationOptionMatch>
-  ): boolean {
+const citationOptionModel = {
+  filter(option: IOption<ICitationOption, ICitationOptionMatch>): boolean {
     return (
       option.match !== null &&
       [option.match.title, option.match.year, option.match.creators].filter(
         v => v !== null
       ).length !== 0
     );
-  }
-
-  sortOptions(
+  },
+  sort(
     a: IOption<ICitationOption, ICitationOptionMatch>,
     b: IOption<ICitationOption, ICitationOptionMatch>
   ): number {
@@ -156,9 +133,8 @@ export class CitationSelector extends Selector<
     return (
       (a.match.title?.score || Infinity) - (b.match.title?.score || Infinity)
     );
-  }
-
-  matchOption(option: ICitationOption, query: string): ICitationOptionMatch {
+  },
+  match(option: ICitationOption, query: string): ICitationOptionMatch {
     query = query.toLowerCase();
     const publication = option.publication;
     const titleMatch = StringExt.matchSumOfSquares(
@@ -190,6 +166,35 @@ export class CitationSelector extends Selector<
         : null
     };
   }
+};
+
+function citationOptionID(option: ICitationOption): string {
+  return (
+    '' +
+    (option.publication.id ||
+      option.publication.DOI ||
+      option.publication.title)
+  );
+}
+
+export class CitationSelector extends ModalSelector<
+  ICitationOption,
+  ICitationOptionMatch
+> {
+  typeNames: Record<ICitableData['type'], string>;
+
+  constructor(protected trans: TranslationBundle) {
+    super();
+    this.placeholder = trans.__('Start typing title, author, or year');
+    this.typeNames = translateTypeLabels(trans);
+    this.addClass(CITATION_SELECTOR_CLASS);
+  }
+
+  createID(option: ICitationOption): string {
+    return 'c-' + (citationOptionID(option) || super.createID(option));
+  }
+
+  optionModel = citationOptionModel;
 
   protected getInitialOptions(): ICitationOption[] {
     return this.options
@@ -202,6 +207,87 @@ export class CitationSelector extends Selector<
   ): string {
     const sources = new Set([...options.map(option => option.data.source)]);
     return sources.size > 1 ? 'cm-multiple-sources' : 'cm-single-source';
+  }
+
+  renderOption(props: {
+    option: IOption<ICitationOption, ICitationOptionMatch>;
+  }): JSX.Element {
+    const data = props.option.data;
+    const match = props.option.match;
+    const publication = data.publication;
+    const type =
+      publication.type && publication.type in this.typeNames
+        ? this.typeNames[publication.type]
+        : publication.type;
+    return (
+      <div className={'cm-Option-content'}>
+        <div className={'cm-Option-main'}>
+          <span className={`cm-source cm-source-${data.source}`}>
+            {data.source[0]}
+          </span>
+          <CitationOptionTitle
+            title={publication.title}
+            match={match ? match.title : null}
+          />
+          <span className={'cm-citationCount'}>
+            {data.citationsInDocument !== 0
+              ? this.trans._n(
+                  '%1 occurrence',
+                  '%1 occurrences',
+                  data.citationsInDocument
+                )
+              : ''}
+          </span>
+          <span className={'cm-year'}>{publication.date?.getFullYear()}</span>
+          <span className={'cm-type'}>{type}</span>
+        </div>
+        <div className={'cm-Option-details'}>
+          <CitationOptionAuthors
+            authors={publication.author}
+            matches={match?.creators}
+          />
+        </div>
+      </div>
+    );
+  }
+}
+
+// TODO: well the model pattern would be more handy here - I can create the model once an re-use it as I wish;
+export class ReferenceBrowser extends Selector<
+  ICitationOption,
+  ICitationOptionMatch
+> {
+  typeNames: Record<ICitableData['type'], string>;
+
+  constructor(protected trans: TranslationBundle) {
+    super();
+    this.placeholder = trans.__('Start typing title, author, or year');
+    this.typeNames = translateTypeLabels(trans);
+    this.addClass(CITATION_SELECTOR_CLASS);
+    this.addClass('cm-ReferenceBrowser');
+  }
+
+  createID(option: ICitationOption): string {
+    return 'c-' + (citationOptionID(option) || super.createID(option));
+  }
+
+  optionModel = citationOptionModel;
+
+  protected getInitialOptions(): ICitationOption[] {
+    return this.options
+      .filter(option => option.citationsInDocument > 0)
+      .sort((a, b) => a.citationsInDocument - b.citationsInDocument);
+  }
+
+  render(): JSX.Element {
+    return (
+      <div className={'cm-ReferenceBrowser'}>
+        <div className={'cm-ButtonBar'}>
+          Refresh | Change style | Switch to Project Summary
+        </div>
+        {super.render()}
+      </div>
+    );
   }
 
   renderOption(props: {

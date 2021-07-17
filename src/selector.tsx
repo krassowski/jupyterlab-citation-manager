@@ -38,13 +38,16 @@ export namespace Selector {
 }
 
 export abstract class Selector<O, M> extends ReactWidget {
-  private _query: string;
-  private _filteredOptions: IOption<O, M>[];
-  private _reject: () => void;
-  private _accept: (option: O) => void;
-  private _previousPromise: Promise<O> | null;
-  private readonly _optionsChanged: Signal<Selector<any, any>, IOption<O, M>[]>;
-  private _input: HTMLInputElement | null = null;
+  protected _query: string;
+  protected _filteredOptions: IOption<O, M>[];
+  protected _reject: () => void;
+  protected _accept: (option: O) => void;
+  protected _previousPromise: Promise<O> | null;
+  protected readonly _optionsChanged: Signal<
+    Selector<any, any>,
+    IOption<O, M>[]
+  >;
+  protected input: HTMLInputElement | null = null;
   protected options: O[];
   protected activeIndex: number;
   protected defaultConfig: Selector.IConfiguration = {
@@ -68,36 +71,19 @@ export abstract class Selector<O, M> extends ReactWidget {
     this._accept = option => 0;
     this._previousPromise = null;
     this.activeIndex = 0;
-    this.addClass('cm-ModalSelector');
     // required to receive blur and focus events
     this.node.tabIndex = 0;
   }
 
-  abstract matchOption(option: O, query: string): M;
-  abstract filterOption(option: IOption<O, M>): boolean;
-  abstract sortOptions(a: IOption<O, M>, b: IOption<O, M>): number;
+  abstract optionModel: {
+    match(option: O, query: string): M;
+    filter(option: IOption<O, M>): boolean;
+    sort(a: IOption<O, M>, b: IOption<O, M>): number;
+  };
   placeholder = 'Search';
 
   protected emitChangedSignal(): void {
     this._optionsChanged.emit(this._filteredOptions);
-  }
-
-  getItem(options: O[]): Promise<O> {
-    if (this._previousPromise) {
-      this._reject();
-    }
-    this.activeIndex = 0;
-    this.options = options;
-    this._filteredOptions = this.transformOptions(this.getInitialOptions());
-    this.show();
-    if (!this.isAttached) {
-      this.attach();
-    }
-    this._optionsChanged.emit(this._filteredOptions);
-    return new Promise<O>((accept, reject) => {
-      this._accept = accept;
-      this._reject = reject;
-    });
   }
 
   protected createID(option: O): string {
@@ -106,55 +92,6 @@ export abstract class Selector<O, M> extends ReactWidget {
 
   protected getInitialOptions(): O[] {
     return [];
-  }
-
-  attach(): void {
-    Widget.attach(this, document.body);
-  }
-
-  detach(): void {
-    Widget.detach(this);
-  }
-
-  /**
-   * Hide the modal command palette and reset its search.
-   */
-  private hideAndReset(): void {
-    this.hide();
-    if (this._previousPromise) {
-      this._reject();
-    }
-    this._previousPromise = null;
-    if (this._input) {
-      this._input.value = '';
-    }
-  }
-
-  /**
-   * Handle incoming events.
-   */
-  handleEvent(event: Event): void {
-    switch (event.type) {
-      case 'keydown':
-        this._evtKeydown(event as KeyboardEvent);
-        break;
-      case 'blur': {
-        // if the focus shifted outside of this DOM element, hide and reset.
-        const target = event.target as HTMLElement;
-        if (this.node.contains(target as HTMLElement)) {
-          console.log('resetting');
-          event.stopPropagation();
-          this.hideAndReset();
-        }
-        break;
-      }
-      case 'contextmenu':
-        event.preventDefault();
-        event.stopPropagation();
-        break;
-      default:
-        break;
-    }
   }
 
   private transformOptions(options: O[]): IOption<O, M>[] {
@@ -173,24 +110,18 @@ export abstract class Selector<O, M> extends ReactWidget {
 
   protected handleInput(event: React.FormEvent<HTMLInputElement>): void {
     this._query = (event.target as HTMLInputElement).value;
-    const optionsNodes = this.getOptionNodes();
-    if (this.activeIndex < optionsNodes.length) {
-      optionsNodes[this.activeIndex].classList.remove(ACTIVE_CLASS);
-    }
     this._filteredOptions = this.options
       .map(option => {
         return {
-          match: this.matchOption(option, this._query),
+          match: this.optionModel.match(option, this._query),
           data: option,
           id: this.createID(option)
         };
       })
-      .filter(this.filterOption)
-      .sort(this.sortOptions);
-    this.activeIndex = 0;
-    if (optionsNodes.length) {
-      optionsNodes[this.activeIndex].classList.add(ACTIVE_CLASS);
-    }
+      .filter(this.optionModel.filter)
+      .sort(this.optionModel.sort);
+
+    this.setActiveIndex(0);
     this._debouncedChanged.invoke().catch(console.warn);
   }
 
@@ -246,7 +177,7 @@ export abstract class Selector<O, M> extends ReactWidget {
               onInput={this.handleInput.bind(this)}
               className={'cm-SearchField'}
               ref={input => {
-                this._input = input;
+                this.input = input;
               }}
               autoFocus
             />
@@ -261,48 +192,16 @@ export abstract class Selector<O, M> extends ReactWidget {
   }
 
   /**
-   *  A message handler invoked on an `'after-attach'` message.
+   * Hide the modal command palette and reset its search.
    */
-  protected onAfterAttach(msg: Message): void {
-    super.onAfterAttach(msg);
-    this.node.addEventListener('keydown', this, true);
-    this.node.addEventListener('contextmenu', this, true);
-  }
-
-  /**
-   *  A message handler invoked on an `'after-detach'` message.
-   */
-  protected onAfterDetach(msg: Message): void {
-    this.node.removeEventListener('keydown', this, true);
-    this.node.removeEventListener('contextmenu', this, true);
-  }
-
-  protected onBeforeHide(msg: Message): void {
-    document.removeEventListener('blur', this, true);
-  }
-
-  protected onAfterShow(msg: Message): void {
-    document.addEventListener('blur', this, true);
-    if (this._input) {
-      this._input.focus();
-      window.setTimeout(() => {
-        const input = this._input;
-        if (!input) {
-          console.warn('Input went away before focusing');
-          return;
-        }
-        // notebook cells will try to steal the focus from selector - lets regain it immediately
-        input.focus();
-      }, 0);
+  protected hideAndReset(): void {
+    this.hide();
+    if (this._previousPromise) {
+      this._reject();
     }
-  }
-
-  /**
-   * A message handler invoked on an `'activate-request'` message.
-   */
-  protected onActivateRequest(msg: Message): void {
-    if (this.isAttached) {
-      this.show();
+    this._previousPromise = null;
+    if (this.input) {
+      this.input.value = '';
     }
   }
 
@@ -313,6 +212,12 @@ export abstract class Selector<O, M> extends ReactWidget {
       }
     }
     if (option) {
+      const activeIndex = this._filteredOptions.findIndex(
+        o => o.data === option
+      );
+      if (activeIndex !== -1) {
+        this.setActiveIndex(activeIndex);
+      }
       this._accept(option);
       this._previousPromise = null;
     } else {
@@ -321,7 +226,21 @@ export abstract class Selector<O, M> extends ReactWidget {
         this._previousPromise = null;
       }
     }
-    this.hideAndReset();
+  }
+
+  protected setActiveIndex(index: number): void {
+    const optionsNodes = this.getOptionNodes();
+    if (!optionsNodes.length) {
+      return;
+    }
+    optionsNodes[this.activeIndex].classList.remove(ACTIVE_CLASS);
+    this.activeIndex = index;
+    const activatedElement = optionsNodes[this.activeIndex];
+    optionsNodes[this.activeIndex].classList.add(ACTIVE_CLASS);
+    ElementExt.scrollIntoViewIfNeeded(
+      activatedElement.parentElement as HTMLElement,
+      activatedElement
+    );
   }
 
   protected cycle(
@@ -330,42 +249,32 @@ export abstract class Selector<O, M> extends ReactWidget {
     const index = this.activeIndex;
     const options = this._filteredOptions;
     const pageSize = 10;
-    const optionsNodes = this.getOptionNodes();
-    if (optionsNodes.length) {
-      optionsNodes[this.activeIndex].classList.remove(ACTIVE_CLASS);
-    }
+    let activeIndex: number;
 
     switch (how) {
       case 'down':
-        this.activeIndex = index === options.length - 1 ? 0 : index + 1;
+        activeIndex = index === options.length - 1 ? 0 : index + 1;
         break;
       case 'up':
-        this.activeIndex = index === 0 ? options.length - 1 : index - 1;
+        activeIndex = index === 0 ? options.length - 1 : index - 1;
         break;
       case 'page down':
-        this.activeIndex =
+        activeIndex =
           index + pageSize >= options.length - 1
             ? options.length - 1
             : index + pageSize;
         break;
       case 'page up':
-        this.activeIndex = index - pageSize <= 0 ? 0 : index - pageSize;
+        activeIndex = index - pageSize <= 0 ? 0 : index - pageSize;
         break;
       case 'end':
-        this.activeIndex = options.length - 1;
+        activeIndex = options.length - 1;
         break;
       case 'home':
-        this.activeIndex = 0;
+        activeIndex = 0;
         break;
     }
-    if (optionsNodes.length) {
-      const activatedElement = optionsNodes[this.activeIndex];
-      optionsNodes[this.activeIndex].classList.add(ACTIVE_CLASS);
-      ElementExt.scrollIntoViewIfNeeded(
-        activatedElement.parentElement as HTMLElement,
-        activatedElement
-      );
-    }
+    this.setActiveIndex(activeIndex);
   }
 
   /**
@@ -402,6 +311,149 @@ export abstract class Selector<O, M> extends ReactWidget {
         break;
       default:
         break;
+    }
+  }
+
+  getItem(options: O[]): Promise<O> {
+    if (this._previousPromise) {
+      this._reject();
+    }
+    this.activeIndex = 0;
+    this.options = options;
+    this._filteredOptions = this.transformOptions(this.getInitialOptions());
+    this._optionsChanged.emit(this._filteredOptions);
+    return new Promise<O>((accept, reject) => {
+      this._accept = accept;
+      this._reject = reject;
+    });
+  }
+
+  /**
+   * Handle incoming events.
+   */
+  handleEvent(event: Event): void {
+    switch (event.type) {
+      case 'keydown':
+        this._evtKeydown(event as KeyboardEvent);
+        break;
+      default:
+        break;
+    }
+  }
+
+  /**
+   *  A message handler invoked on an `'after-attach'` message.
+   */
+  protected onAfterAttach(msg: Message): void {
+    super.onAfterAttach(msg);
+    this.node.addEventListener('keydown', this, true);
+  }
+
+  /**
+   *  A message handler invoked on an `'after-detach'` message.
+   */
+  protected onAfterDetach(msg: Message): void {
+    this.node.removeEventListener('keydown', this, true);
+  }
+}
+
+export abstract class ModalSelector<O, M> extends Selector<O, M> {
+  protected constructor(config: Selector.IConfiguration = {}) {
+    super();
+    this.addClass('cm-ModalSelector');
+    // required to receive blur and focus events
+    this.node.tabIndex = 0;
+  }
+
+  getItem(options: O[]): Promise<O> {
+    const promise = super.getItem(options);
+    this.show();
+    if (!this.isAttached) {
+      this.attach();
+    }
+    return promise;
+  }
+
+  acceptOption(option?: O): void {
+    super.acceptOption(option);
+    this.hideAndReset();
+  }
+
+  attach(): void {
+    Widget.attach(this, document.body);
+  }
+
+  detach(): void {
+    Widget.detach(this);
+  }
+
+  /**
+   * Handle incoming events.
+   */
+  handleEvent(event: Event): void {
+    super.handleEvent(event);
+    switch (event.type) {
+      case 'blur': {
+        // if the focus shifted outside of this DOM element, hide and reset.
+        const target = event.target as HTMLElement;
+        if (this.node.contains(target as HTMLElement)) {
+          console.log('resetting');
+          event.stopPropagation();
+          this.hideAndReset();
+        }
+        break;
+      }
+      case 'contextmenu':
+        event.preventDefault();
+        event.stopPropagation();
+        break;
+      default:
+        break;
+    }
+  }
+
+  /**
+   *  A message handler invoked on an `'after-attach'` message.
+   */
+  protected onAfterAttach(msg: Message): void {
+    super.onAfterAttach(msg);
+    this.node.addEventListener('contextmenu', this, true);
+  }
+
+  /**
+   *  A message handler invoked on an `'after-detach'` message.
+   */
+  protected onAfterDetach(msg: Message): void {
+    super.onAfterDetach(msg);
+    this.node.removeEventListener('contextmenu', this, true);
+  }
+
+  protected onBeforeHide(msg: Message): void {
+    document.removeEventListener('blur', this, true);
+  }
+
+  protected onAfterShow(msg: Message): void {
+    document.addEventListener('blur', this, true);
+    if (this.input) {
+      this.input.focus();
+      window.setTimeout(() => {
+        const input = this.input;
+        if (!input) {
+          console.warn('Input went away before focusing');
+          return;
+        }
+        // notebook cells will try to steal the focus from selector - lets regain it immediately
+        input.focus();
+      }, 0);
+    }
+  }
+
+  /**
+   * A message handler invoked on an `'activate-request'` message.
+   */
+  protected onActivateRequest(msg: Message): void {
+    if (this.isAttached) {
+      this.show();
     }
   }
 }

@@ -1,6 +1,6 @@
 import IMatchResult = StringExt.IMatchResult;
 import { IStyle } from './types';
-import { anonymousMark, IOption, Selector } from './selector';
+import { anonymousMark, IOption, ModalSelector } from './selector';
 import { TranslationBundle } from '@jupyterlab/translation';
 import { StringExt } from '@lumino/algorithm';
 import * as React from 'react';
@@ -14,7 +14,10 @@ interface IStyleOptionMatch {
   shortTitle: IMatchResult | null;
 }
 
-export class StyleSelector extends Selector<IStyleOption, IStyleOptionMatch> {
+export class StyleSelector extends ModalSelector<
+  IStyleOption,
+  IStyleOptionMatch
+> {
   /**
    * Fields that will be used to filter down the initial list of citation styles.
    *
@@ -38,46 +41,48 @@ export class StyleSelector extends Selector<IStyleOption, IStyleOptionMatch> {
     );
   }
 
-  filterOption(option: IOption<IStyleOption, IStyleOptionMatch>): boolean {
-    return !!option.match?.title || !!option.match?.shortTitle;
-  }
-
-  matchOption(option: IStyleOption, query: string): IStyleOptionMatch {
-    query = query.toLowerCase();
-    const style = option.style;
-    // TODO: edit distance
-    const titleMatch = StringExt.matchSumOfSquares(
-      (style.info.title || '').toLowerCase(),
-      query
-    );
-    const shortTitleMatch = StringExt.matchSumOfSquares(
-      (style.info.shortTitle || '').toLowerCase(),
-      query
-    );
-    return {
-      title: titleMatch,
-      shortTitle: shortTitleMatch
-    };
-  }
-
-  sortOptions(
-    a: IOption<IStyleOption, IStyleOptionMatch>,
-    b: IOption<IStyleOption, IStyleOptionMatch>
-  ): number {
-    // TODO show generic-base (and maybe others) higher
-    return (
-      (a.match?.title?.score || Infinity) - (b.match?.title?.score || Infinity)
-    );
-  }
-
+  optionModel = {
+    filter(option: IOption<IStyleOption, IStyleOptionMatch>): boolean {
+      return !!option.match?.title || !!option.match?.shortTitle;
+    },
+    match(option: IStyleOption, query: string): IStyleOptionMatch {
+      query = query.toLowerCase();
+      const style = option.style;
+      // TODO: edit distance
+      const titleMatch = StringExt.matchSumOfSquares(
+        (style.info.title || '').toLowerCase(),
+        query
+      );
+      const shortTitleMatch = StringExt.matchSumOfSquares(
+        (style.info.shortTitle || '').toLowerCase(),
+        query
+      );
+      return {
+        title: titleMatch,
+        shortTitle: shortTitleMatch
+      };
+    },
+    sort(
+      a: IOption<IStyleOption, IStyleOptionMatch>,
+      b: IOption<IStyleOption, IStyleOptionMatch>
+    ): number {
+      // TODO show generic-base (and maybe others) higher
+      return (
+        (a.match?.title?.score || Infinity) -
+        (b.match?.title?.score || Infinity)
+      );
+    }
+  };
   protected renderOption(props: {
     option: IOption<IStyleOption, IStyleOptionMatch>;
   }): JSX.Element {
     const data = props.option.data;
     const info = data.style.info;
     const match = props.option.match;
-    // TODO: show license, authors, short title and fields tags
+    // TODO: show license, authors, and fields tags
     // TODO: also show the preview for the active item (maybe render in a promise to avoid delays?)
+    //        maybe even as a dedicated side panel; this might be better as it would allow to show both
+    //        the citation and bibliography examples (probably good to include some citation clusters in the example)
     return (
       <div className={'cm-Option-content'}>
         <span className={'cm-short-title'}>

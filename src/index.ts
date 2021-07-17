@@ -27,8 +27,9 @@ import { DefaultMap, harmonizeData, simpleRequest } from './utils';
 import { LabIcon } from '@jupyterlab/ui-components';
 import addCitation from '../style/icons/book-plus.svg';
 import bibliography from '../style/icons/book-open-variant.svg';
+import bookshelf from '../style/icons/bookshelf.svg';
 import * as CSL from 'citeproc';
-import { CitationSelector } from './citationSelector';
+import { CitationSelector, ReferenceBrowser } from './citationSelector';
 import {
   ITranslator,
   nullTranslator,
@@ -47,6 +48,11 @@ export const addCitationIcon = new LabIcon({
 export const BibliographyIcon = new LabIcon({
   name: 'citation:bibliography',
   svgstr: bibliography
+});
+
+export const BookshelfIcon = new LabIcon({
+  name: 'citation:bookshelf',
+  svgstr: bookshelf
 });
 
 const PLUGIN_ID = 'jupyterlab-citation-manager:plugin';
@@ -93,6 +99,7 @@ class UnifiedCitationManager implements ICitationManager {
   private styles: StylesManager;
   private processors: WeakMap<DocumentWidget, Promise<ICiteProcEngine>>;
   protected defaultStyleID = 'apa';
+  referenceBrowser: ReferenceBrowser;
 
   constructor(
     notebookTracker: INotebookTracker,
@@ -101,6 +108,7 @@ class UnifiedCitationManager implements ICitationManager {
   ) {
     this.styles = new StylesManager(trans);
     this.selector = new CitationSelector(trans);
+    this.referenceBrowser = new ReferenceBrowser(trans);
     this.selector.hide();
     this.adapters = new WeakMap();
     this.processors = new WeakMap();
@@ -161,6 +169,10 @@ class UnifiedCitationManager implements ICitationManager {
     }
     const bibliography = (await processor).makeBibliography();
     adapter.updateBibliography(this.processBibliography(bibliography));
+
+    this.referenceBrowser
+      .getItem(this.collectOptions(adapter.citations))
+      .catch(console.warn);
   }
 
   protected updateSettings(settings: ISettingRegistry.ISettings) {
@@ -524,6 +536,21 @@ const managerPlugin: JupyterFrontEndPlugin<ICitationManager> = {
     );
 
     addCommands(app, notebookTracker, manager, trans, commandPalette);
+
+    try {
+      manager.referenceBrowser.id =
+        'jupyterlab-citation-manager:reference-browser';
+      manager.referenceBrowser.title.icon = BookshelfIcon;
+      manager.referenceBrowser.title.caption = 'Reference Browser';
+      manager.referenceBrowser.show();
+      console.log('hello');
+      app.shell.add(manager.referenceBrowser, 'left', { rank: 850 });
+    } catch (error) {
+      console.warn(
+        'Could not attach the reference browser to the sidebar',
+        error
+      );
+    }
 
     app.docRegistry.addWidgetExtension(
       'Notebook',

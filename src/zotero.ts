@@ -296,7 +296,6 @@ export class ZoteroClient implements IReferenceProvider {
 
   // TODO add this as a button in the sidebar
   public async updatePublications(): Promise<ICitableData[]> {
-    // TODO handle 304 Not Modified (already sending proper header, just not integrated handling into the logic yet)
     const publications = await this.loadAll(
       'users/' + this._user?.id + '/items',
       'csljson',
