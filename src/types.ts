@@ -207,7 +207,23 @@ export interface IDocumentAdapter<T extends DocumentWidget> {
   findCitations(subset: CitationQuerySubset): ICitation[];
 }
 
-export interface ICitationManager extends ICitationSystem {
+export interface IStylePreview {
+  bibliography: string;
+  citations: ICitation[];
+  style: IStyle;
+}
+
+export interface IPreviewNotAvailable {
+  reason: string;
+}
+
+export interface IStylePreviewProvider {
+  previewStyle(style: IStyle, maxCitations: number): Promise<IStylePreview>;
+}
+
+export interface ICitationManager
+  extends ICitationSystem,
+    IStylePreviewProvider {
   registerReferenceProvider(provider: IReferenceProvider): void;
   addCitation(documentWidget: DocumentWidget): void;
   addBibliography(documentWidget: DocumentWidget): void;

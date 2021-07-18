@@ -1,10 +1,12 @@
 import IMatchResult = StringExt.IMatchResult;
-import { IStyle } from '../types';
+import { IStylePreviewProvider, IStyle, IStylePreview } from '../types';
 import { anonymousMark, IOption, ModalSelector } from './selector';
 import { TranslationBundle } from '@jupyterlab/translation';
 import { StringExt } from '@lumino/algorithm';
 import * as React from 'react';
 import { InfinityIfMissing } from '../utils';
+import { UseSignal } from '@jupyterlab/apputils';
+import { Signal } from '@lumino/signaling';
 
 interface IStyleOption {
   style: IStyle;
@@ -13,6 +15,32 @@ interface IStyleOption {
 interface IStyleOptionMatch {
   title: IMatchResult | null;
   shortTitle: IMatchResult | null;
+}
+
+function StylePreview(props: {
+  preview: IStylePreview;
+  maxExcerptSize: number;
+}) {
+  const contexts = props.preview.citations.map(citation => {
+    const excerpt = citation.context.excerpt;
+    return (
+      <p key={'cm-preview-' + citation.citationId}>
+        {excerpt.before.slice(-props.maxExcerptSize)}
+        <span dangerouslySetInnerHTML={{ __html: citation.text }} />
+        {excerpt.after.slice(0, props.maxExcerptSize)}
+      </p>
+    );
+  });
+  return (
+    <div key={'style-preview-' + props.preview.style.id}>
+      <h3>{props.preview.style.info.title}</h3>
+      <div className={'cm-StylePreview-content'}>
+        <div className={'cm-previewContext'}>{contexts}</div>
+        <h4>Bibliography</h4>
+        <div dangerouslySetInnerHTML={{ __html: props.preview.bibliography }} />
+      </div>
+    </div>
+  );
 }
 
 export class StyleSelector extends ModalSelector<
@@ -28,10 +56,39 @@ export class StyleSelector extends ModalSelector<
    *   would be good to have a list of all possible fields to validate the settings.
    */
   preferredFields: string[] = ['generic-base'];
+  protected previewChanged: Signal<StyleSelector, JSX.Element>;
 
-  constructor(protected trans: TranslationBundle) {
+  constructor(
+    protected trans: TranslationBundle,
+    protected previewProvider: IStylePreviewProvider
+  ) {
     super();
     this.addClass('cm-StyleSelector');
+    this.previewChanged = new Signal(this);
+    this.activeChanged.connect((sender, style) => {
+      this.previewChanged.emit(
+        <div>{this.trans.__('Loading preview...')}</div>
+      );
+      this.renderPreview(style).then(renderedPreview =>
+        this.previewChanged.emit(renderedPreview)
+      );
+    });
+  }
+
+  protected async renderPreview(style: IStyleOption): Promise<JSX.Element> {
+    if (!style) {
+      return <div>{this.trans.__('No style selected')}</div>;
+    }
+    try {
+      const preview = await this.previewProvider.previewStyle(style.style, 4);
+      return <StylePreview preview={preview} maxExcerptSize={50} />;
+    } catch (availability) {
+      if (availability.reason) {
+        return <div>{availability.reason}</div>;
+      } else {
+        return <div>{this.trans.__('Preview not available')}</div>;
+      }
+    }
   }
 
   protected getInitialOptions(): IStyleOption[] {
@@ -111,6 +168,21 @@ export class StyleSelector extends ModalSelector<
               )
             : info.title}
         </span>
+      </div>
+    );
+  }
+
+  render(): JSX.Element {
+    return (
+      <div className={'cm-StyleSelector-panels'}>
+        {super.render()}
+        <div className={'cm-StylePreview'}>
+          <UseSignal<any, JSX.Element> signal={this.previewChanged}>
+            {(x, preview) => {
+              return preview || null;
+            }}
+          </UseSignal>
+        </div>
       </div>
     );
   }

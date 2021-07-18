@@ -18,9 +18,12 @@ import {
   ICitationOption,
   ICiteProcEngine,
   IDocumentAdapter,
+  IStylePreviewProvider,
   IReferenceProvider,
   IStyle,
-  IStyleManagerResponse
+  IStyleManagerResponse,
+  IPreviewNotAvailable,
+  IStylePreview
 } from './types';
 import { zoteroPlugin } from './zotero';
 import { DefaultMap, harmonizeData, simpleRequest } from './utils';
@@ -47,8 +50,11 @@ class StylesManager {
   styles: IStyle[];
   private selector: StyleSelector;
 
-  constructor(protected trans: TranslationBundle) {
-    this.selector = new StyleSelector(trans);
+  constructor(
+    protected trans: TranslationBundle,
+    previewProvider: IStylePreviewProvider
+  ) {
+    this.selector = new StyleSelector(trans, previewProvider);
     this.styles = [];
     // read the list of languages from the external extension
     this.ready = this.fetchStylesList();
@@ -86,12 +92,12 @@ class UnifiedCitationManager implements ICitationManager {
   protected defaultStyleID = 'apa';
 
   constructor(
-    notebookTracker: INotebookTracker,
+    protected notebookTracker: INotebookTracker,
     settingsRegistry: ISettingRegistry | null,
     protected trans: TranslationBundle,
     protected referenceBrowser: ReferenceBrowser
   ) {
-    this.styles = new StylesManager(trans);
+    this.styles = new StylesManager(trans, this);
     this.selector = new CitationSelector(trans);
     this.selector.hide();
     this.adapters = new WeakMap();
@@ -119,6 +125,59 @@ class UnifiedCitationManager implements ICitationManager {
     }
   }
 
+  async previewStyle(
+    style: IStyle,
+    maxCitations: number
+  ): Promise<IStylePreview> {
+    if (!this.notebookTracker.currentWidget) {
+      throw {
+        reason:
+          'Please switch to a document that supports citations to generate a preview'
+      } as IPreviewNotAvailable;
+    }
+    const panel = this.notebookTracker.currentWidget;
+    const citations = this.getAdapter(panel).citations.slice(0, maxCitations);
+    if (citations.length === 0) {
+      throw {
+        reason: 'No citations in the document to generate the preview from.'
+      } as IPreviewNotAvailable;
+    }
+    const processor = await this.createProcessor(style.id);
+    const renderedCitations: ICitation[] = [];
+    for (const citation of this.processCitations(processor, citations)) {
+      renderedCitations.push(citation);
+    }
+    return {
+      citations: renderedCitations,
+      bibliography: this.processBibliography(processor.makeBibliography()),
+      style: style
+    };
+  }
+
+  protected *processCitations(
+    processor: ICiteProcEngine,
+    citations: ICitation[]
+  ): Generator<ICitation> {
+    let i = 0;
+    for (const citation of citations) {
+      // TODO: this could be rewritten to use `processCitationCluster` directly
+      //  which should avoid an extra loop in `appendCitationCluster` driving complexity up
+      const [result] = processor.appendCitationCluster({
+        properties: {
+          noteIndex: i
+        },
+        citationID: citation.citationId,
+        citationItems: citation.items.map(itemID => {
+          return {
+            id: citation.source + '|' + itemID
+          } as ICitationItemData;
+        })
+      });
+      yield { ...citation, text: result[1] };
+      i++;
+    }
+  }
+
   protected async processFromScratch(
     panel: NotebookPanel,
     styleId: string | undefined = undefined
@@ -130,28 +189,16 @@ class UnifiedCitationManager implements ICitationManager {
     const processor = this.createProcessor(styleId);
     this.processors.set(panel, processor);
     adapter.citations = adapter.findCitations('all');
+    // TODO: progressbar
 
-    let i = 0;
     const readyProcessor = await processor;
-    for (const citation of adapter.citations) {
-      // TODO: this could be rewritten to use `processCitationCluster` directly
-      //  which should avoid an extra loop in `appendCitationCluster` driving complexity up
-      const [result] = readyProcessor.appendCitationCluster({
-        properties: {
-          noteIndex: i
-        },
-        citationID: citation.citationId,
-        citationItems: citation.items.map(itemID => {
-          return {
-            id: citation.source + '|' + itemID
-          } as ICitationItemData;
-        })
-      });
-      console.log(result);
-      adapter.updateCitation({ ...citation, text: result[1] });
-      i++;
+    for (const citationInsertData of this.processCitations(
+      readyProcessor,
+      adapter.citations
+    )) {
+      adapter.updateCitation(citationInsertData);
     }
-    const bibliography = (await processor).makeBibliography();
+    const bibliography = readyProcessor.makeBibliography();
     adapter.updateBibliography(this.processBibliography(bibliography));
 
     this.referenceBrowser

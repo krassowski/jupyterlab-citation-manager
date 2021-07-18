@@ -314,6 +314,34 @@ cite {
     margin-left: 8px;
 }
 
+.cm-StylePreview {
+    border-top: 1px solid var(--jp-border-color0);
+    margin-top: 8px;
+    padding: 8px 4px;
+    color: var(--jp-ui-font-color1);
+    font-size: var(--jp-ui-font-size1);
+    font-weight: 400;
+}
+
+.cm-StylePreview-content {
+    padding-left: 4px;
+}
+
+.cm-StylePreview h3 {
+    margin: 8px 0;
+    margin-top: 12px 0;
+    font-size: var(--jp-content-font-size2);
+    font-weight: normal;
+}
+
+.cm-StylePreview h4 {
+    margin: 6px 0;
+    margin-top: 8px;
+    font-size: var(--jp-content-font-size1);
+    font-weight: normal;
+}
+
+
 /*
 CSL requires styling the fields according to:
 https://docs.citationstyles.org/en/stable/specification.html#display

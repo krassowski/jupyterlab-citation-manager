@@ -57,6 +57,7 @@ export abstract class Selector<O, M> extends ReactWidget {
   };
   protected _config: Selector.IConfiguration;
   private _debouncedChanged: Debouncer;
+  protected activeChanged: Signal<Selector<any, any>, O>;
 
   protected constructor(config: Selector.IConfiguration = {}) {
     super();
@@ -72,6 +73,7 @@ export abstract class Selector<O, M> extends ReactWidget {
     this._accept = option => 0;
     this._previousPromise = null;
     this.activeIndex = 0;
+    this.activeChanged = new Signal(this);
     // required to receive blur and focus events
     this.node.tabIndex = 0;
   }
@@ -254,6 +256,7 @@ export abstract class Selector<O, M> extends ReactWidget {
       activatedElement.parentElement as HTMLElement,
       activatedElement
     );
+    this.activeChanged.emit(this._filteredOptions[this.activeIndex].data);
   }
 
   protected cycle(
@@ -325,10 +328,13 @@ export abstract class Selector<O, M> extends ReactWidget {
     if (this._previousPromise) {
       this._reject();
     }
+    // first return index on old options to 0 (if any)
     this.setActiveIndex(0);
     this.options = options;
     this._filteredOptions = this.transformOptions(this.getInitialOptions());
     this._optionsChanged.emit(this._filteredOptions);
+    // set index on new options to zero
+    this.setActiveIndex(0);
     return new Promise<O>((accept, reject) => {
       this._accept = accept;
       this._reject = reject;
