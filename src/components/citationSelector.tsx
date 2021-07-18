@@ -5,6 +5,7 @@ import { ICitableData, ICitationContext, ICitationOption } from '../types';
 import { anonymousMark, IOption, ModalSelector } from './selector';
 import { TranslationBundle } from '@jupyterlab/translation';
 import { NameVariable } from '../_csl_data';
+import { InfinityIfMissing } from '../utils';
 
 export const CITATION_SELECTOR_CLASS = 'cm-CitationSelector';
 
@@ -147,9 +148,20 @@ export const citationOptionModel = {
     if (a.match === null || b.match === null) {
       return 0;
     }
-    return (
-      (a.match.title?.score || Infinity) - (b.match.title?.score || Infinity)
-    );
+    const titleResult =
+      InfinityIfMissing(a.match.title?.score) -
+      InfinityIfMissing(b.match.title?.score);
+    const creatorsResult =
+      (a.match.creators
+        ? Math.min(...a.match.creators.map(c => InfinityIfMissing(c?.score)))
+        : Infinity) -
+      (b.match.creators
+        ? Math.min(...b.match.creators.map(c => InfinityIfMissing(c?.score)))
+        : Infinity);
+    const yearResult =
+      InfinityIfMissing(a.match.year?.absoluteDifference) -
+      InfinityIfMissing(b.match.year?.absoluteDifference);
+    return creatorsResult || titleResult || yearResult;
   },
   match(option: ICitationOption, query: string): ICitationOptionMatch {
     query = query.toLowerCase();
@@ -164,9 +176,9 @@ export const citationOptionModel = {
     if (queryYear) {
       yearMatch = {
         absoluteDifference: Math.abs(
-          publication.date?.getFullYear
+          (publication.date?.getFullYear
             ? publication.date?.getFullYear()
-            : 0 - parseInt(queryYear[0], 10)
+            : 0) - parseInt(queryYear[0], 10)
         )
       };
     }

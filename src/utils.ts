@@ -7,6 +7,14 @@ import {
 import marked from 'marked';
 import { DateContentModel } from './_csl_citation';
 
+export function InfinityIfMissing(value?: number) {
+  // eslint-disable-next-line eqeqeq
+  if (value == null) {
+    return Infinity;
+  }
+  return value;
+}
+
 interface IResponse {
   response: XMLHttpRequest;
   progress: ProgressEvent;

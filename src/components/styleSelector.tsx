@@ -4,6 +4,7 @@ import { anonymousMark, IOption, ModalSelector } from './selector';
 import { TranslationBundle } from '@jupyterlab/translation';
 import { StringExt } from '@lumino/algorithm';
 import * as React from 'react';
+import { InfinityIfMissing } from '../utils';
 
 interface IStyleOption {
   style: IStyle;
@@ -68,8 +69,10 @@ export class StyleSelector extends ModalSelector<
     ): number {
       // TODO show generic-base (and maybe others) higher
       return (
-        (a.match?.title?.score || Infinity) -
-        (b.match?.title?.score || Infinity)
+        InfinityIfMissing(a.match?.shortTitle?.score) -
+          InfinityIfMissing(b.match?.shortTitle?.score) ||
+        InfinityIfMissing(a.match?.title?.score) -
+          InfinityIfMissing(b.match?.title?.score)
       );
     }
   };
