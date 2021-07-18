@@ -406,89 +406,99 @@ class UnifiedCitationManager implements ICitationManager {
 
     const options = this.collectOptions(citationsAlreadyInDocument);
 
-    this.selector.getItem(options).then(async chosenOption => {
-      const processor = await this.processors.get(content);
-      if (!processor) {
-        console.warn('Could not find a processor for ', content);
-        return;
-      }
-
-      // TODO add a lock to prevent folks using RTC from breaking their bibliography
-      const citationsBefore = adapter.findCitations('before-cursor');
-      const citationsAfter = adapter.findCitations('after-cursor');
-
-      const existingCitationIDs = new Set([
-        ...citationsBefore.map(c => c.citationId),
-        ...citationsAfter.map(c => c.citationId)
-      ]);
-
-      const newCitationID = this._generateRandomID(existingCitationIDs);
-
-      const citationsBeforeMap: Record<number, ICitation> = Object.fromEntries(
-        citationsBefore.map((c, index) => [index, c])
-      );
-      const citationsAfterMap: Record<number, ICitation> = Object.fromEntries(
-        citationsAfter.map((c, index) => [index + 1, c])
-      );
-      console.log('before', citationsBefore);
-      console.log('after', citationsAfter);
-
-      const result = processor.processCitationCluster(
-        {
-          properties: {
-            noteIndex: citationsBefore.length
-          },
-          citationItems: [
-            {
-              id: chosenOption.source + '|' + chosenOption.publication.id
-            }
-          ],
-          citationID: newCitationID
-        },
-        citationsBefore.map((existingCitation, i) => [
-          existingCitation.citationId,
-          i
-        ]),
-        citationsAfter.map((existingCitation, i) => [
-          existingCitation.citationId,
-          i + 1
-        ])
-      );
-      const citationsToUpdate = result[1];
-      console.log('citations to update', citationsToUpdate);
-
-      for (const [indexToUpdate, newText] of citationsToUpdate) {
-        if (indexToUpdate === citationsBefore.length) {
-          (adapter as NotebookAdapter).insertCitation({
-            source: chosenOption.source,
-            text: newText,
-            items: [chosenOption.publication.id as string],
-            citationId: newCitationID
-          });
-        } else {
-          let citation: ICitation;
-          if (indexToUpdate in citationsAfterMap) {
-            citation = citationsAfterMap[indexToUpdate];
-          } else if (indexToUpdate in citationsBeforeMap) {
-            citation = citationsBeforeMap[indexToUpdate];
-          } else {
-            console.warn(
-              'Could not locate citation with index',
-              indexToUpdate,
-              'in',
-              citationsBeforeMap,
-              'nor',
-              citationsAfterMap
-            );
-            continue;
-          }
-          adapter.updateCitation({ ...citation, text: newText });
+    this.selector
+      .getItem(options)
+      .then(async chosenOption => {
+        const processor = await this.processors.get(content);
+        if (!processor) {
+          console.warn('Could not find a processor for ', content);
+          return;
         }
-      }
 
-      const bibliography = processor.makeBibliography();
-      adapter.updateBibliography(this.processBibliography(bibliography));
-    });
+        // TODO add a lock to prevent folks using RTC from breaking their bibliography
+        const citationsBefore = adapter.findCitations('before-cursor');
+        const citationsAfter = adapter.findCitations('after-cursor');
+
+        const existingCitationIDs = new Set([
+          ...citationsBefore.map(c => c.citationId),
+          ...citationsAfter.map(c => c.citationId)
+        ]);
+
+        const newCitationID = this._generateRandomID(existingCitationIDs);
+
+        const citationsBeforeMap: Record<number, ICitation> =
+          Object.fromEntries(citationsBefore.map((c, index) => [index, c]));
+        const citationsAfterMap: Record<number, ICitation> = Object.fromEntries(
+          citationsAfter.map((c, index) => [index + 1, c])
+        );
+        console.log('before', citationsBefore);
+        console.log('after', citationsAfter);
+
+        const result = processor.processCitationCluster(
+          {
+            properties: {
+              noteIndex: citationsBefore.length
+            },
+            citationItems: [
+              {
+                id: chosenOption.source + '|' + chosenOption.publication.id
+              }
+            ],
+            citationID: newCitationID
+          },
+          citationsBefore.map((existingCitation, i) => [
+            existingCitation.citationId,
+            i
+          ]),
+          citationsAfter.map((existingCitation, i) => [
+            existingCitation.citationId,
+            i + 1
+          ])
+        );
+        const citationsToUpdate = result[1];
+        console.log('citations to update', citationsToUpdate);
+
+        for (const [indexToUpdate, newText] of citationsToUpdate) {
+          if (indexToUpdate === citationsBefore.length) {
+            (adapter as NotebookAdapter).insertCitation({
+              source: chosenOption.source,
+              text: newText,
+              items: [chosenOption.publication.id as string],
+              citationId: newCitationID
+            });
+          } else {
+            let citation: ICitation;
+            if (indexToUpdate in citationsAfterMap) {
+              citation = citationsAfterMap[indexToUpdate];
+            } else if (indexToUpdate in citationsBeforeMap) {
+              citation = citationsBeforeMap[indexToUpdate];
+            } else {
+              console.warn(
+                'Could not locate citation with index',
+                indexToUpdate,
+                'in',
+                citationsBeforeMap,
+                'nor',
+                citationsAfterMap
+              );
+              continue;
+            }
+            adapter.updateCitation({ ...citation, text: newText });
+          }
+        }
+
+        const bibliography = processor.makeBibliography();
+        adapter.updateBibliography(this.processBibliography(bibliography));
+      })
+      .finally(() => {
+        this.refocusWidget(content);
+      });
+  }
+
+  private refocusWidget(content: NotebookPanel) {
+    setTimeout(() => {
+      content.content.widgets[content.content.activeCellIndex].editor.focus();
+    }, 0);
   }
 
   protected processBibliography(bibliography: CiteProcBibliography): string {
@@ -543,11 +553,16 @@ class UnifiedCitationManager implements ICitationManager {
   }
 
   changeStyle(content: NotebookPanel) {
-    this.styles.selectStyle().then(style => {
-      console.log('selected style', style);
-      this.getAdapter(content).setCitationStyle(style.style.id);
-      this.processFromScratch(content, style.style.id).then(console.warn);
-    });
+    this.styles
+      .selectStyle()
+      .then(style => {
+        console.log('selected style', style);
+        this.getAdapter(content).setCitationStyle(style.style.id);
+        this.processFromScratch(content, style.style.id).then(console.warn);
+      })
+      .finally(() => {
+        this.refocusWidget(content);
+      });
   }
 
   retrieveItem(id: string): ICitableData {
