@@ -1,3 +1,5 @@
+import re
+
 from jupyter_server.base.handlers import APIHandler
 from jupyter_server.utils import url_path_join
 
@@ -30,16 +32,17 @@ def setup_handlers(web_app, url_path, server_app):
 
     handlers = []
     for style in styles:
-        style_url = url_path_join(base_url, url_path, style['id'])
+        style_endpoint = url_path_join(base_url, url_path, 'styles', style['id'])
         handlers.append(
             (
-                r"{}/(.*\.(?:csl))".format(style_url),
+                # see https://stackoverflow.com/a/27212892
+                re.escape(style_endpoint) + '()',
                 StaticFileHandler,
                 {"path": style['path']}
             )
         )
     web_app.add_handlers(host_pattern, handlers)
-    StylesManagerHandler.styles = styles_to_url(styles, url_path_join(base_url, url_path))
+    StylesManagerHandler.styles = styles_to_url(styles)
 
     route_pattern = url_path_join(base_url, url_path, "styles")
     handlers = [(route_pattern, StylesManagerHandler)]

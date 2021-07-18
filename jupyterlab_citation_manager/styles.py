@@ -5,7 +5,6 @@ from xml.etree import ElementTree
 
 from jupyter_core.application import JupyterApp
 from jupyter_core.paths import jupyter_path
-from jupyter_server.utils import url_path_join
 
 
 OS_SPECIFIC_PATHS = {
@@ -62,32 +61,23 @@ def _scan_for_styles(data_path, log: logging.Logger):
     p = Path(data_path)
     style_files = list(p.glob('*.csl'))
     styles = []
-    previous_identifiers = set()
+    # TODO: prevent files with the same name but in different config directories from conflicting (how?)
     for style_path in style_files:
-        path = style_path.parent
-
-        base_name = style_path.name[:-4]
-
-        if base_name in previous_identifiers:
-            identifier = str(path / base_name)
-        else:
-            identifier = base_name
-        previous_identifiers.add(identifier)
-
         try:
             info = _extract_info(style_path)
         except Exception as e:
             log.warning(
-                f"Could not extract {identifier} style into in {path}:"
+                f"Could not extract style info for {style_path}:"
                 f" {e}."
             )
             continue
 
         styles.append({
-            'path': path,
-            'shortId': base_name,
-            'id': identifier,
-            'csl': style_path.name,
+            # ID for retrieving from server; should be same as path on GitHub CSL repo (if present in there)
+            'id': str(style_path.relative_to(p)),
+            # path used internally to point to the resource
+            'path': str(style_path),
+            # information extracted from XML
             'info': info
         })
     return styles
@@ -109,15 +99,14 @@ def discover_styles(server_app: JupyterApp):
     return styles
 
 
-def styles_to_url(styles, base_url):
+def styles_to_url(styles):
     return [
         {
             **{
                 k: v
                 for k, v in style.items()
                 if k not in {'path'}
-            },
-            'csl': url_path_join(base_url, style['id'], style['csl']),
+            }
         }
         for style in styles
     ]

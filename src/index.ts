@@ -47,6 +47,7 @@ import { openerPlugin } from './opener';
 import { IStatusBar } from '@jupyterlab/statusbar';
 import { UpdateProgress } from './components/progressbar';
 import { Signal } from '@lumino/signaling';
+import { URLExt } from '@jupyterlab/coreutils';
 
 const PLUGIN_ID = 'jupyterlab-citation-manager:plugin';
 
@@ -94,7 +95,8 @@ class UnifiedCitationManager implements ICitationManager {
   private selector: CitationSelector;
   private styles: StylesManager;
   private processors: WeakMap<DocumentWidget, Promise<ICiteProcEngine>>;
-  protected defaultStyleID = 'apa';
+  private localeCache: Map<string, string>;
+  protected defaultStyleID = 'apa.csl';
 
   progress: Signal<UnifiedCitationManager, IProgress>;
 
@@ -110,6 +112,7 @@ class UnifiedCitationManager implements ICitationManager {
     this.selector.hide();
     this.adapters = new WeakMap();
     this.processors = new WeakMap();
+    this.localeCache = new Map();
     // TODO generalize to allow use in Markdown Editor too
     notebookTracker.widgetAdded.connect((tracker, panel) => {
       const debouncedUpdate = new Debouncer(async () => {
@@ -429,14 +432,25 @@ class UnifiedCitationManager implements ICitationManager {
     // try the offline copy first, in case those are use-defined (local) styles,
     // and because it should be generally faster and nicer for GitHub:
     // TODO: should it use style object? What should be stored as the default? Are filename identifiers stable?
+    return requestAPI(URLExt.join('styles', styleID))
+      .then(response => {
+        console.log('Success fetching from server extension', response);
+        return new CSL.Engine(this, response);
+      })
+      .catch(() => {
+        console.warn(
+          `Could not get the style ${styleID} from server extension;` +
+            ' falling back to the fetching directly from GitHub.'
+        );
 
-    // fallback to online copy (in case of server not being available):
-    return simpleRequest(
-      `https://raw.githubusercontent.com/citation-style-language/styles/master/${styleID}.csl`
-    ).then(result => {
-      const styleAsText = result.response.responseText;
-      return new CSL.Engine(this, styleAsText);
-    });
+        // fallback to online copy (in case of server not being available):
+        return simpleRequest(
+          `https://raw.githubusercontent.com/citation-style-language/styles/master/${styleID}`
+        ).then(result => {
+          const styleAsText = result.response.responseText;
+          return new CSL.Engine(this, styleAsText);
+        });
+      });
   }
 
   async addBibliography(content: NotebookPanel) {
@@ -455,8 +469,8 @@ class UnifiedCitationManager implements ICitationManager {
   changeStyle(content: NotebookPanel) {
     this.styles.selectStyle().then(style => {
       console.log('selected style', style);
-      this.getAdapter(content).setCitationStyle(style.style.shortId);
-      this.processFromScratch(content, style.style.shortId).then(console.warn);
+      this.getAdapter(content).setCitationStyle(style.style.id);
+      this.processFromScratch(content, style.style.id).then(console.warn);
     });
   }
 
@@ -475,6 +489,10 @@ class UnifiedCitationManager implements ICitationManager {
   }
 
   retrieveLocale(lang: string): string {
+    let locale = this.localeCache.get(lang);
+    if (locale) {
+      return locale;
+    }
     const xhr = new XMLHttpRequest();
     xhr.open(
       'GET',
@@ -484,7 +502,9 @@ class UnifiedCitationManager implements ICitationManager {
       false
     );
     xhr.send(null);
-    return xhr.responseText;
+    locale = xhr.responseText;
+    this.localeCache.set(lang, locale);
+    return locale;
   }
 }
 

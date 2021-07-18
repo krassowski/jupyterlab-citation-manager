@@ -20,7 +20,7 @@
     "defaultStyle": {
       "title": "Default Citation Style",
       "type": "string",
-      "default": "apa",
+      "default": "apa.csl",
       "description": "The default citation style, one of the styles in the Citation Style Language (CSL) repository."
     }
   },

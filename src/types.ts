@@ -262,22 +262,13 @@ interface IStyleInfo {
  */
 export interface IStyle {
   /**
-   * Identifier of the style consisting of the filename without the .csl suffix
-   * and path information if needed to distinguish from other styles.
+   * Identifier of the style on server
    */
   id: string;
   /**
    * Information extracted from the XML inside .csl file
    */
   info: IStyleInfo;
-  /**
-   * Potentially non-unique ID (id without the path information)
-   */
-  shortId: string;
-  /**
-   * Path to the .csl file.
-   */
-  csl: string;
 }
 
 export interface IStyleManagerResponse {
