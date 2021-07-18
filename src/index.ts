@@ -37,6 +37,7 @@ import { requestAPI } from './handler';
 import { StyleSelector } from './components/styleSelector';
 import { addCitationIcon, bibliographyIcon, bookshelfIcon } from './icons';
 import { ReferenceBrowser } from './components/referenceBrowser';
+import { openerPlugin } from './opener';
 
 const PLUGIN_ID = 'jupyterlab-citation-manager:plugin';
 
@@ -548,6 +549,10 @@ const managerPlugin: JupyterFrontEndPlugin<ICitationManager> = {
   }
 };
 
-const plugins: JupyterFrontEndPlugin<any>[] = [managerPlugin, zoteroPlugin];
+const plugins: JupyterFrontEndPlugin<any>[] = [
+  managerPlugin,
+  zoteroPlugin,
+  openerPlugin
+];
 
 export default plugins;

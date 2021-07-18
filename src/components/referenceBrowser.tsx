@@ -1,9 +1,19 @@
 import { IOption, Selector } from './selector';
-import { CommandIDs, ICitableData, ICitationOption } from '../types';
+import {
+  CommandIDs,
+  ICitableData,
+  ICitableWrapper,
+  ICitationOption
+} from '../types';
 import { TranslationBundle } from '@jupyterlab/translation';
 import { CommandRegistry } from '@lumino/commands';
 import { ToolbarButton } from './utils';
-import { refreshIcon } from '@jupyterlab/ui-components';
+import {
+  buildIcon,
+  fileIcon,
+  launcherIcon,
+  refreshIcon
+} from '@jupyterlab/ui-components';
 import { bibliographyIcon } from '../icons';
 import * as React from 'react';
 import {
@@ -12,9 +22,20 @@ import {
   citationOptionID,
   citationOptionModel,
   CitationOptionTitle,
+  CitationSource,
   ICitationOptionMatch,
   translateTypeLabels
 } from './citationSelector';
+import { ReadonlyPartialJSONObject } from '@lumino/coreutils';
+import { Dialog, showDialog } from '@jupyterlab/apputils';
+
+function ShowReference(props: { publication: ICitableWrapper }) {
+  return (
+    <div className={'cm-ReferenceDetails'}>
+      <code>{JSON.stringify(props.publication, null, 4)}</code>
+    </div>
+  );
+}
 
 export class ReferenceBrowser extends Selector<
   ICitationOption,
@@ -52,12 +73,14 @@ export class ReferenceBrowser extends Selector<
           <ToolbarButton
             icon={refreshIcon}
             execute={() => this.commands.execute(CommandIDs.updateReferences)}
+            tooltip={this.trans.__('Update references')}
           />
           <ToolbarButton
             icon={bibliographyIcon}
             execute={() =>
               this.commands.execute(CommandIDs.changeBibliographyStyle)
             }
+            tooltip={this.trans.__('Change citation style')}
           />
         </div>
         {super.render()}
@@ -78,9 +101,7 @@ export class ReferenceBrowser extends Selector<
     return (
       <div className={'cm-Option-content'}>
         <div className={'cm-Option-main'}>
-          <span className={`cm-source cm-source-${data.source}`}>
-            {data.source[0]}
-          </span>
+          <CitationSource source={data.source} />
           <CitationOptionTitle
             title={publication.title}
             match={match ? match.title : null}
@@ -102,6 +123,43 @@ export class ReferenceBrowser extends Selector<
             authors={publication.author}
             matches={match?.creators}
           />
+        </div>
+        <div className={'cm-Option-active-card'}>
+          <div className={'cm-ButtonBar'}>
+            <ToolbarButton
+              icon={fileIcon}
+              execute={() =>
+                this.commands.execute(
+                  CommandIDs.open,
+                  publication as unknown as ReadonlyPartialJSONObject
+                )
+              }
+              tooltip={'Open in JupyterLab'}
+            />
+            <ToolbarButton
+              icon={launcherIcon}
+              execute={() => window.open('https://doi.org/' + publication.DOI)}
+              tooltip={'Open in new browser window'}
+            />
+            <ToolbarButton
+              icon={buildIcon}
+              execute={() =>
+                showDialog({
+                  body: <ShowReference publication={publication} />,
+                  buttons: [Dialog.okButton()]
+                })
+              }
+              tooltip={'Show full metadata'}
+            />
+          </div>
+          <div
+            className={'cm-abstract cm-collapsed'}
+            onClick={event => {
+              (event.target as HTMLElement).classList.remove('cm-collapsed');
+            }}
+          >
+            {publication.abstract}
+          </div>
         </div>
       </div>
     );

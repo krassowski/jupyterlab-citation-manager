@@ -318,7 +318,7 @@ export abstract class Selector<O, M> extends ReactWidget {
     if (this._previousPromise) {
       this._reject();
     }
-    this.activeIndex = 0;
+    this.setActiveIndex(0);
     this.options = options;
     this._filteredOptions = this.transformOptions(this.getInitialOptions());
     this._optionsChanged.emit(this._filteredOptions);

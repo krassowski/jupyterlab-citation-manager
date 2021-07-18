@@ -32,11 +32,18 @@ TODO GIF
 
 ### Change style
 
-Choose citation style by ...
+To change the citation style go to the sidebar (ICON pic) and press (ICON pic) or press TODO.
 
 ### Synchronise references
 
-TODO
+To synchronise your collection of references go to the sidebar (ICON pic) and press (ICON pic) or press TODO.
+Updating can take a few seconds; a progress bar will appear on the status bar to keep you updated (if you have it enabled).
+
+### Explore your collection
+
+To get the details on references in your collections without leaving JupyterLab open the sidebar (ICON pic)
+and click on the item of interest. You will be able to preview the abstract, check metadata and even
+open the article inside JupyterLab (or in a new browser tab - depending on your preference).
 
 ## Requirements
 

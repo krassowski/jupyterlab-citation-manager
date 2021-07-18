@@ -194,6 +194,7 @@ export const ICitationManager = new Token<ICitationManager>(
 );
 
 export enum CommandIDs {
+  open = 'cm:open-reference',
   insertCitation = 'cm:insert-citation',
   insertBibliography = 'cm:insert-bibliography',
   changeBibliographyStyle = 'cm:change-bibliography-style',

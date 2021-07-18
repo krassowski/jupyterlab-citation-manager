@@ -218,6 +218,7 @@ export class ZoteroClient implements IReferenceProvider {
                 `Restored ${this.citableItems.size} citable items from cache`
               );
             }
+            this.updateCacheState();
           }
         })
         .catch(console.warn)

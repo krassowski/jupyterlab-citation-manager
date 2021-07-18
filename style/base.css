@@ -238,6 +238,59 @@ cite {
     padding-right: 2px;
 }
 
+.cm-Option-active-card {
+    display: none;
+}
+
+.cm-ReferenceBrowser .cm-Option.cm-mod-active .cm-Option-active-card {
+    display: block;
+}
+
+.cm-ReferenceBrowser .cm-Option.cm-mod-active:hover .cm-Option-active-card {
+    background: var(--jp-layout-color1);
+}
+
+.cm-ReferenceBrowser .cm-Option .cm-ButtonBar {
+    flex: 0 0 auto;
+    display: flex;
+    flex-direction: row;
+}
+
+.cm-ReferenceBrowser .cm-Option {
+    border: 1px solid transparent;
+}
+
+.cm-ReferenceBrowser .cm-Option.cm-mod-active {
+    border-color: var(--jp-brand-color1);
+    background: none;
+}
+
+.cm-ReferenceDetails code {
+    white-space: break-spaces;
+}
+
+.cm-abstract {
+    padding: 0 14px;
+}
+
+.cm-abstract.cm-collapsed {
+    --max-height: 80px;
+    max-height: var(--max-height);
+    overflow: hidden;
+    position: relative;
+}
+
+.cm-abstract.cm-collapsed::after {
+    --overflow-indicator-height: 20px;
+    content: '';
+    height: var(--overflow-indicator-height);
+    width: 100%;
+    background: linear-gradient(180deg , transparent, var(--jp-layout-color1));
+    top: calc(var(--max-height) - var(--overflow-indicator-height));
+    position: absolute;
+    left: 0;
+}
+
 /*
 CSL requires styling the fields according to:
 https://docs.citationstyles.org/en/stable/specification.html#display

@@ -62,6 +62,14 @@ export function CitationOptionAuthors(props: {
   );
 }
 
+export function CitationSource(props: { source: string }): JSX.Element {
+  return (
+    <span className={`cm-source cm-source-${props.source}`}>
+      {props.source[0]}
+    </span>
+  );
+}
+
 export function translateTypeLabels(
   trans: TranslationBundle
 ): Record<ICitableData['type'], string> {
@@ -222,9 +230,7 @@ export class CitationSelector extends ModalSelector<
     return (
       <div className={'cm-Option-content'}>
         <div className={'cm-Option-main'}>
-          <span className={`cm-source cm-source-${data.source}`}>
-            {data.source[0]}
-          </span>
+          <CitationSource source={data.source} />
           <CitationOptionTitle
             title={publication.title}
             match={match ? match.title : null}
