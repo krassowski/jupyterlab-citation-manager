@@ -39,7 +39,7 @@ import {
 } from '@jupyterlab/translation';
 import { NotebookAdapter, NotebookButtons } from './adapters/notebook';
 import { ICommandPalette } from '@jupyterlab/apputils';
-import { requestAPI } from './handler';
+import { fetchAPI, requestAPI } from './handler';
 import { StyleSelector } from './components/styleSelector';
 import { addCitationIcon, bibliographyIcon, bookshelfIcon } from './icons';
 import { ReferenceBrowser } from './components/referenceBrowser';
@@ -82,7 +82,7 @@ class StylesManager {
   }
 
   protected fetchStylesList() {
-    return requestAPI<any>('styles').then((values: IStyleManagerResponse) => {
+    return requestAPI<IStyleManagerResponse>('styles').then(values => {
       console.debug('Styles are ready');
       this.styles = values.styles;
     });
@@ -126,6 +126,12 @@ class UnifiedCitationManager implements ICitationManager {
       panel.content.modelContentChanged.connect(() => {
         debouncedUpdate.invoke().catch(console.warn);
       });
+    });
+    notebookTracker.currentChanged.connect((tracker, panel) => {
+      if (!panel) {
+        return;
+      }
+      this.updateReferenceBrowser(this.getAdapter(panel));
     });
     this.providers = new Map();
     if (settingsRegistry) {
@@ -226,6 +232,10 @@ class UnifiedCitationManager implements ICitationManager {
     adapter.updateBibliography(this.processBibliography(bibliography));
     this.progress.emit({ ...progressBase, state: 'completed' });
 
+    this.updateReferenceBrowser(adapter);
+  }
+
+  protected updateReferenceBrowser(adapter: IDocumentAdapter<any>) {
     this.referenceBrowser
       .getItem(this.collectOptions(adapter.citations))
       .catch(console.warn);
@@ -432,9 +442,9 @@ class UnifiedCitationManager implements ICitationManager {
     // try the offline copy first, in case those are use-defined (local) styles,
     // and because it should be generally faster and nicer for GitHub:
     // TODO: should it use style object? What should be stored as the default? Are filename identifiers stable?
-    return requestAPI(URLExt.join('styles', styleID))
+    return fetchAPI(URLExt.join('styles', styleID))
       .then(response => {
-        console.log('Success fetching from server extension', response);
+        console.log(`Success fetching style ${styleID} from server extension`);
         return new CSL.Engine(this, response);
       })
       .catch(() => {
