@@ -11,3 +11,5 @@ together with the respective creator/copyright holder:
 - `bookshelf.svg` - Thomas de Saint-Exupéry
 - `book-open-variant.svg` - Google
 - `book-plus.svg` - Simran
+- `palette.svg` - Google
+- `refresh.svg` - Google

@@ -15,7 +15,7 @@ import {
   launcherIcon,
   refreshIcon
 } from '@jupyterlab/ui-components';
-import { bibliographyIcon } from '../icons';
+import { paletteIcon } from '../icons';
 import * as React from 'react';
 import {
   CITATION_SELECTOR_CLASS,
@@ -47,7 +47,10 @@ function CitationsInContext(props: {
 }) {
   const citations = props.citations.map(citation => {
     return (
-      <li onClick={() => citation.host.scrollIntoView()} title={props.clickLabel}>
+      <li
+        onClick={() => citation.host.scrollIntoView()}
+        title={props.clickLabel}
+      >
         {citation.excerpt.before.slice(-props.excerptMaxSpan)}
         <span dangerouslySetInnerHTML={{ __html: citation.excerpt.citation }} />
         {citation.excerpt.after.slice(0, props.excerptMaxSpan)}
@@ -103,7 +106,7 @@ export class ReferenceBrowser extends Selector<
             tooltip={this.trans.__('Update references')}
           />
           <ToolbarButton
-            icon={bibliographyIcon}
+            icon={paletteIcon}
             execute={() =>
               this.commands.execute(CommandIDs.changeBibliographyStyle)
             }

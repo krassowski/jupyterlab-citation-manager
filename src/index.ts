@@ -41,13 +41,19 @@ import { NotebookAdapter, NotebookButtons } from './adapters/notebook';
 import { ICommandPalette } from '@jupyterlab/apputils';
 import { fetchAPI, requestAPI } from './handler';
 import { StyleSelector } from './components/styleSelector';
-import { addCitationIcon, bibliographyIcon, bookshelfIcon } from './icons';
+import {
+  addCitationIcon,
+  bibliographyIcon,
+  bookshelfIcon,
+  paletteIcon
+} from './icons';
 import { ReferenceBrowser } from './components/referenceBrowser';
 import { openerPlugin } from './opener';
 import { IStatusBar } from '@jupyterlab/statusbar';
 import { UpdateProgress } from './components/progressbar';
 import { Signal } from '@lumino/signaling';
 import { URLExt } from '@jupyterlab/coreutils';
+import { refreshIcon } from '@jupyterlab/ui-components';
 
 const PLUGIN_ID = 'jupyterlab-citation-manager:plugin';
 
@@ -566,13 +572,15 @@ function addCommands(
     label: trans.__('Change bibliography style'),
     caption: trans.__('Change bibliography style for the active document.'),
     execute: executeOnCurrent(manager.changeStyle.bind(manager)),
-    isEnabled: hasPanel
+    isEnabled: hasPanel,
+    icon: paletteIcon
   });
 
   app.commands.addCommand(CommandIDs.updateReferences, {
     label: trans.__('Update references'),
     caption: trans.__('Synchronise the references from all providers.'),
-    execute: manager.updateReferences.bind(manager)
+    execute: manager.updateReferences.bind(manager),
+    icon: refreshIcon
   });
 
   if (commandPalette) {

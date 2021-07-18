@@ -20,23 +20,25 @@ The most basic, read-only key is sufficient (and recommended). The key will be s
 
 ### Insert citation
 
-Insert citation by clicking on the (ICON pic) or pressing <kbd>Alt</kbd> + <kbd>C</kbd> (shortcut is customizable).
+Insert citation by clicking on the insert citation button in the toolbar of your notebook (![add citation icon][book-plus]) or pressing <kbd>Alt</kbd> + <kbd>C</kbd> (shortcut is customizable).
+Start typing to filter references by title, authors or year.
 
 TODO GIF
 
 ### Insert bibliography
 
-Insert bibliography by clicking on the (ICON pic) or pressing <kbd>Alt</kbd> + <kbd>B</kbd> (shortcut is customizable).
+Insert bibliography by clicking on the (![add bibliography icon][book-open-variant]) or pressing <kbd>Alt</kbd> + <kbd>B</kbd> (shortcut is customizable).
 
 TODO GIF
 
 ### Change style
 
-To change the citation style go to the sidebar (ICON pic) and press (ICON pic) or press TODO.
+To change the citation style go to the sidebar (![sidebar icon][bookshelf]) and click on (![change style icon][palette]) or press <kbd>Alt</kbd> + <kbd>S</kbd>.
+Only a subset of generic styles will be shown initially; start typing a name to find more specialised styles.
 
 ### Synchronise references
 
-To synchronise your collection of references go to the sidebar (ICON pic) and press (ICON pic) or press TODO.
+To synchronise your collection of references go to the sidebar (![sidebar icon][bookshelf]) and click on (![refresh collection icon][refresh]) or press TODO.
 Updating can take a few seconds; a progress bar will appear on the status bar to keep you updated (if you have it enabled).
 
 ### Explore your collection
@@ -44,6 +46,13 @@ Updating can take a few seconds; a progress bar will appear on the status bar to
 To get the details on references in your collections without leaving JupyterLab open the sidebar (ICON pic)
 and click on the item of interest. You will be able to preview the abstract, check metadata and even
 open the article inside JupyterLab (or in a new browser tab - depending on your preference).
+
+
+[bookshelf]: style/icons/bookshelf.svg?sanitize=true
+[book-open-variant]: style/icons/book-open-variant.svg?sanitize=true
+[book-plus]: style/icons/bookshelf.svg?book-plus=true
+[palette]: style/icons/palette.svg?sanitize=true
+[refresh]: style/icons/refresh.svg?sanitize=true
 
 ## Requirements
 
