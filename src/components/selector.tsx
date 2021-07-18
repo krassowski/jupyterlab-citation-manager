@@ -26,7 +26,13 @@ export function anonymousMark(match: string): JSX.Element {
 }
 
 export namespace Selector {
-  export interface IConfiguration {
+  export interface IModel<O, M> {
+    match(option: O, query: string): M;
+    filter(option: IOption<O, M>): boolean;
+    sort(a: IOption<O, M>, b: IOption<O, M>): number;
+    initialOptions?(options: O[]): O[];
+  }
+  export interface IConfiguration<O, M> {
     /**
      * How long should the debouncer wait (ms)?
      */
@@ -35,6 +41,7 @@ export namespace Selector {
      * Debounce if as many options are to be displayed
      */
     debounceOptionNumberThreshold?: number;
+    model: IModel<O, M>;
   }
 }
 
@@ -51,15 +58,19 @@ export abstract class Selector<O, M> extends ReactWidget {
   protected input: HTMLInputElement | null = null;
   protected options: O[];
   protected activeIndex: number;
-  protected defaultConfig: Selector.IConfiguration = {
+  protected defaultConfig: Partial<Selector.IConfiguration<O, M>> = {
     debounceRate: 250,
     debounceOptionNumberThreshold: 200
   };
-  protected _config: Selector.IConfiguration;
+  protected _config: Selector.IConfiguration<O, M>;
   private _debouncedChanged: Debouncer;
   protected activeChanged: Signal<Selector<any, any>, O>;
 
-  protected constructor(config: Selector.IConfiguration = {}) {
+  protected get model(): Selector.IModel<O, M> {
+    return this._config.model;
+  }
+
+  protected constructor(config: Selector.IConfiguration<O, M>) {
     super();
     this._config = { ...this.defaultConfig, ...config };
     this._debouncedChanged = new Debouncer(() => {
@@ -78,11 +89,6 @@ export abstract class Selector<O, M> extends ReactWidget {
     this.node.tabIndex = 0;
   }
 
-  abstract optionModel: {
-    match(option: O, query: string): M;
-    filter(option: IOption<O, M>): boolean;
-    sort(a: IOption<O, M>, b: IOption<O, M>): number;
-  };
   placeholder = 'Search';
 
   protected emitChangedSignal(): void {
@@ -94,6 +100,9 @@ export abstract class Selector<O, M> extends ReactWidget {
   }
 
   protected getInitialOptions(): O[] {
+    if (this.model.initialOptions) {
+      return this.model.initialOptions(this.options);
+    }
     return [];
   }
 
@@ -116,13 +125,13 @@ export abstract class Selector<O, M> extends ReactWidget {
     this._filteredOptions = this.options
       .map(option => {
         return {
-          match: this.optionModel.match(option, this._query),
+          match: this.model.match(option, this._query),
           data: option,
           id: this.createID(option)
         };
       })
-      .filter(this.optionModel.filter)
-      .sort(this.optionModel.sort);
+      .filter(this.model.filter)
+      .sort(this.model.sort);
 
     this.setActiveIndex(0);
     this._debouncedChanged.invoke().catch(console.warn);
@@ -371,8 +380,8 @@ export abstract class Selector<O, M> extends ReactWidget {
 }
 
 export abstract class ModalSelector<O, M> extends Selector<O, M> {
-  protected constructor(config: Selector.IConfiguration = {}) {
-    super();
+  protected constructor(config: Selector.IConfiguration<O, M>) {
+    super(config);
     this.addClass('cm-ModalSelector');
     // required to receive blur and focus events
     this.node.tabIndex = 0;

@@ -58,7 +58,7 @@ import { refreshIcon } from '@jupyterlab/ui-components';
 const PLUGIN_ID = 'jupyterlab-citation-manager:plugin';
 
 class StylesManager {
-  public ready: Promise<any>;
+  public isReady: Promise<any>;
   styles: IStyle[];
   private selector: StyleSelector;
 
@@ -69,11 +69,11 @@ class StylesManager {
     this.selector = new StyleSelector(trans, previewProvider);
     this.styles = [];
     // read the list of languages from the external extension
-    this.ready = this.fetchStylesList();
+    this.isReady = this.fetchStylesList();
   }
 
   async selectStyle() {
-    await this.ready;
+    await this.isReady;
     return await this.selector.getItem(
       this.styles.map(style => {
         return {
@@ -84,7 +84,7 @@ class StylesManager {
   }
 
   updateStyles() {
-    this.ready = this.fetchStylesList();
+    this.isReady = this.fetchStylesList();
   }
 
   protected fetchStylesList() {
@@ -95,6 +95,12 @@ class StylesManager {
   }
 }
 
+interface ICancellablePromise<T> {
+  promise: Promise<T>;
+  cancel: () => void;
+  done: boolean;
+}
+
 class UnifiedCitationManager implements ICitationManager {
   private providers: Map<string, IReferenceProvider>;
   private adapters: WeakMap<DocumentWidget, IDocumentAdapter<DocumentWidget>>;
@@ -103,8 +109,41 @@ class UnifiedCitationManager implements ICitationManager {
   private processors: WeakMap<DocumentWidget, Promise<ICiteProcEngine>>;
   private localeCache: Map<string, string>;
   protected defaultStyleID = 'apa.csl';
+  protected allReady: ICancellablePromise<any>;
 
   progress: Signal<UnifiedCitationManager, IProgress>;
+
+  protected createAllReadyPromiseWrapper(): ICancellablePromise<any> {
+    const REASON_CANCELLED = 'cancelled';
+    let cancel: () => void = () => 0;
+    let resolveCanceller: () => void = () => 0;
+    const cancellerPromise = new Promise<void>((resolve, reject) => {
+      resolveCanceller = resolve;
+      cancel = () => reject(REASON_CANCELLED);
+    });
+    const promise = {
+      promise: Promise.race([
+        Promise.all(
+          [this.styles, ...this.providers.values()].map(
+            provider => provider.isReady
+          )
+        ),
+        cancellerPromise
+      ])
+        .catch(reason => {
+          if (reason !== REASON_CANCELLED) {
+            throw reason;
+          }
+        })
+        .then(() => {
+          promise.done = true;
+          resolveCanceller();
+        }),
+      cancel: cancel,
+      done: false
+    };
+    return promise;
+  }
 
   constructor(
     protected notebookTracker: INotebookTracker,
@@ -122,9 +161,7 @@ class UnifiedCitationManager implements ICitationManager {
     // TODO generalize to allow use in Markdown Editor too
     notebookTracker.widgetAdded.connect((tracker, panel) => {
       const debouncedUpdate = new Debouncer(async () => {
-        await Promise.all(
-          [...this.providers.values()].map(provider => provider.isReady)
-        );
+        await this.createAllReadyPromiseWrapper().promise;
         this.processFromScratch(panel).catch(console.warn);
         // TODO: hoist debounce rate to settings
       }, 2000);
@@ -146,6 +183,9 @@ class UnifiedCitationManager implements ICitationManager {
         this.updateSettings(settings);
       });
     }
+    // at this point this promise is not very useful as it has not
+    // providers registered; more happens during provider registration
+    this.allReady = this.createAllReadyPromiseWrapper();
   }
 
   async previewStyle(
@@ -241,9 +281,16 @@ class UnifiedCitationManager implements ICitationManager {
     this.updateReferenceBrowser(adapter);
   }
 
-  protected updateReferenceBrowser(adapter: IDocumentAdapter<any>) {
+  protected updateReferenceBrowser(adapter?: IDocumentAdapter<any>) {
+    if (!adapter) {
+      const panel = this.notebookTracker.currentWidget;
+      if (panel) {
+        adapter = this.getAdapter(panel);
+      }
+    }
+    const existingCitations = adapter ? adapter.citations : [];
     this.referenceBrowser
-      .getItem(this.collectOptions(adapter.citations))
+      .getItem(this.collectOptions(existingCitations))
       .catch(console.warn);
   }
 
@@ -252,7 +299,18 @@ class UnifiedCitationManager implements ICitationManager {
   }
 
   public registerReferenceProvider(provider: IReferenceProvider): void {
+    console.debug('Adding reference provider', provider);
     this.providers.set(provider.id, provider);
+    // cancel existing promise (if not complete) so that we won't get
+    // multiple initial updates to the reference browser just
+    // because multiple providers get added separately
+    if (!this.allReady.done) {
+      this.allReady.cancel();
+    }
+    this.createAllReadyPromiseWrapper().promise.then(() => {
+      console.debug('All providers ready, updating reference browser...');
+      this.updateReferenceBrowser();
+    });
   }
 
   public async updateReferences() {
@@ -260,7 +318,9 @@ class UnifiedCitationManager implements ICitationManager {
       [...this.providers.values()].map(provider =>
         provider.updatePublications(true)
       )
-    );
+    ).then(() => {
+      this.updateReferenceBrowser();
+    });
   }
 
   private collectOptions(existingCitations: ICitation[]): ICitationOption[] {

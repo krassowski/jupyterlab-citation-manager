@@ -194,6 +194,17 @@ export const citationOptionModel = {
           })
         : null
     };
+  },
+  initialOptions(options: ICitationOption[]): ICitationOption[] {
+    const optionsCitedInDocument = options.filter(
+      option => option.citationsInDocument.length > 0
+    );
+    if (!optionsCitedInDocument.length) {
+      return options;
+    }
+    return optionsCitedInDocument.sort(
+      (a, b) => b.citationsInDocument.length - a.citationsInDocument.length
+    );
   }
 };
 
@@ -213,7 +224,7 @@ export class CitationSelector extends ModalSelector<
   typeNames: Record<ICitableData['type'], string>;
 
   constructor(protected trans: TranslationBundle) {
-    super();
+    super({ model: citationOptionModel });
     this.placeholder = trans.__('Start typing title, author, or year');
     this.typeNames = translateTypeLabels(trans);
     this.addClass(CITATION_SELECTOR_CLASS);
@@ -221,16 +232,6 @@ export class CitationSelector extends ModalSelector<
 
   createID(option: ICitationOption): string {
     return 'c-' + (citationOptionID(option) || super.createID(option));
-  }
-
-  optionModel = citationOptionModel;
-
-  protected getInitialOptions(): ICitationOption[] {
-    return this.options
-      .filter(option => option.citationsInDocument.length > 0)
-      .sort(
-        (a, b) => b.citationsInDocument.length - a.citationsInDocument.length
-      );
   }
 
   protected dynamicClassForList(

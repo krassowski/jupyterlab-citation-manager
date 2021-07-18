@@ -75,7 +75,7 @@ export class ReferenceBrowser extends Selector<
     protected trans: TranslationBundle,
     protected commands: CommandRegistry
   ) {
-    super();
+    super({ model: citationOptionModel });
     this.placeholder = trans.__('Start typing title, author, or year');
     this.typeNames = translateTypeLabels(trans);
     this.addClass(CITATION_SELECTOR_CLASS);
@@ -87,14 +87,6 @@ export class ReferenceBrowser extends Selector<
   }
 
   optionModel = citationOptionModel;
-
-  protected getInitialOptions(): ICitationOption[] {
-    return this.options
-      .filter(option => option.citationsInDocument.length > 0)
-      .sort(
-        (a, b) => b.citationsInDocument.length - a.citationsInDocument.length
-      );
-  }
 
   render(): JSX.Element {
     return (

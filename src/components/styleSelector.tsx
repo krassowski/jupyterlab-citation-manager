@@ -43,6 +43,41 @@ function StylePreview(props: {
   );
 }
 
+const styleOptionModel = {
+  filter(option: IOption<IStyleOption, IStyleOptionMatch>): boolean {
+    return !!option.match?.title || !!option.match?.shortTitle;
+  },
+  match(option: IStyleOption, query: string): IStyleOptionMatch {
+    query = query.toLowerCase();
+    const style = option.style;
+    // TODO: edit distance
+    const titleMatch = StringExt.matchSumOfSquares(
+      (style.info.title || '').toLowerCase(),
+      query
+    );
+    const shortTitleMatch = StringExt.matchSumOfSquares(
+      (style.info.shortTitle || '').toLowerCase(),
+      query
+    );
+    return {
+      title: titleMatch,
+      shortTitle: shortTitleMatch
+    };
+  },
+  sort(
+    a: IOption<IStyleOption, IStyleOptionMatch>,
+    b: IOption<IStyleOption, IStyleOptionMatch>
+  ): number {
+    // TODO show generic-base (and maybe others) higher
+    return (
+      InfinityIfMissing(a.match?.shortTitle?.score) -
+        InfinityIfMissing(b.match?.shortTitle?.score) ||
+      InfinityIfMissing(a.match?.title?.score) -
+        InfinityIfMissing(b.match?.title?.score)
+    );
+  }
+};
+
 export class StyleSelector extends ModalSelector<
   IStyleOption,
   IStyleOptionMatch
@@ -62,7 +97,7 @@ export class StyleSelector extends ModalSelector<
     protected trans: TranslationBundle,
     protected previewProvider: IStylePreviewProvider
   ) {
-    super();
+    super({ model: styleOptionModel });
     this.addClass('cm-StyleSelector');
     this.previewChanged = new Signal(this);
     this.activeChanged.connect((sender, style) => {
@@ -99,40 +134,6 @@ export class StyleSelector extends ModalSelector<
     );
   }
 
-  optionModel = {
-    filter(option: IOption<IStyleOption, IStyleOptionMatch>): boolean {
-      return !!option.match?.title || !!option.match?.shortTitle;
-    },
-    match(option: IStyleOption, query: string): IStyleOptionMatch {
-      query = query.toLowerCase();
-      const style = option.style;
-      // TODO: edit distance
-      const titleMatch = StringExt.matchSumOfSquares(
-        (style.info.title || '').toLowerCase(),
-        query
-      );
-      const shortTitleMatch = StringExt.matchSumOfSquares(
-        (style.info.shortTitle || '').toLowerCase(),
-        query
-      );
-      return {
-        title: titleMatch,
-        shortTitle: shortTitleMatch
-      };
-    },
-    sort(
-      a: IOption<IStyleOption, IStyleOptionMatch>,
-      b: IOption<IStyleOption, IStyleOptionMatch>
-    ): number {
-      // TODO show generic-base (and maybe others) higher
-      return (
-        InfinityIfMissing(a.match?.shortTitle?.score) -
-          InfinityIfMissing(b.match?.shortTitle?.score) ||
-        InfinityIfMissing(a.match?.title?.score) -
-          InfinityIfMissing(b.match?.title?.score)
-      );
-    }
-  };
   protected renderOption(props: {
     option: IOption<IStyleOption, IStyleOptionMatch>;
   }): JSX.Element {
