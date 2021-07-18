@@ -20,14 +20,14 @@ The most basic, read-only key is sufficient (and recommended). The key will be s
 
 ### Insert citation
 
-Insert citation by clicking on the insert citation button in the toolbar of your notebook (![add citation icon][book-plus]) or pressing <kbd>Alt</kbd> + <kbd>C</kbd> (shortcut is customizable).
+Insert citation by clicking on the insert citation button in the toolbar of your notebook (![add citation icon][book-plus]) or pressing <kbd>Alt</kbd> + <kbd>C</kbd> (hint: shortcut are customizable in Advanced Settings Editor).
 Start typing to filter references by title, authors or year.
 
 TODO GIF
 
 ### Insert bibliography
 
-Insert bibliography by clicking on the (![add bibliography icon][book-open-variant]) or pressing <kbd>Alt</kbd> + <kbd>B</kbd> (shortcut is customizable).
+Insert bibliography by clicking on the (![add bibliography icon][book-open-variant]) or pressing <kbd>Alt</kbd> + <kbd>B</kbd>.
 
 TODO GIF
 
@@ -43,9 +43,13 @@ Updating can take a few seconds; a progress bar will appear on the status bar to
 
 ### Explore your collection
 
-To get the details on references in your collections without leaving JupyterLab open the sidebar (ICON pic)
-and click on the item of interest. You will be able to preview the abstract, check metadata and even
+To get the details on references in your collections without leaving JupyterLab open the sidebar (![sidebar icon][bookshelf]),
+and start typing to find item of interest. You will be able to preview the abstract, check metadata and even
 open the article inside JupyterLab (or in a new browser tab - depending on your preference).
+
+References with citations in the current document will show on top when opening the explorer
+and enable a quick preview of citation context and navigation to the relevant place in the document
+(by clicking on the citation context).
 
 
 [bookshelf]: style/icons/bookshelf.svg?sanitize=true
