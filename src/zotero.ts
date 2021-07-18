@@ -165,7 +165,7 @@ export class ZoteroClient implements IReferenceProvider {
    */
   private persistentCacheVersion = '0..';
 
-  progress: Signal<any, IProgress>;
+  progress: Signal<ZoteroClient, IProgress>;
 
   constructor(
     protected settings: ISettings,
@@ -490,7 +490,8 @@ export const zoteroPlugin: JupyterFrontEndPlugin<void> = {
 
         if (statusBar) {
           statusBar.registerStatusItem(PLUGIN_ID, {
-            item: new UpdateProgress(client.progress)
+            item: new UpdateProgress(client.progress),
+            rank: 900
           });
         }
       })

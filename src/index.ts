@@ -1,4 +1,5 @@
 import {
+  ILayoutRestorer,
   JupyterFrontEnd,
   JupyterFrontEndPlugin
 } from '@jupyterlab/application';
@@ -23,7 +24,8 @@ import {
   IStyle,
   IStyleManagerResponse,
   IPreviewNotAvailable,
-  IStylePreview
+  IStylePreview,
+  IProgress
 } from './types';
 import { zoteroPlugin } from './zotero';
 import { DefaultMap, harmonizeData, simpleRequest } from './utils';
@@ -42,6 +44,9 @@ import { StyleSelector } from './components/styleSelector';
 import { addCitationIcon, bibliographyIcon, bookshelfIcon } from './icons';
 import { ReferenceBrowser } from './components/referenceBrowser';
 import { openerPlugin } from './opener';
+import { IStatusBar } from '@jupyterlab/statusbar';
+import { UpdateProgress } from './components/progressbar';
+import { Signal } from '@lumino/signaling';
 
 const PLUGIN_ID = 'jupyterlab-citation-manager:plugin';
 
@@ -91,12 +96,15 @@ class UnifiedCitationManager implements ICitationManager {
   private processors: WeakMap<DocumentWidget, Promise<ICiteProcEngine>>;
   protected defaultStyleID = 'apa';
 
+  progress: Signal<UnifiedCitationManager, IProgress>;
+
   constructor(
     protected notebookTracker: INotebookTracker,
     settingsRegistry: ISettingRegistry | null,
     protected trans: TranslationBundle,
     protected referenceBrowser: ReferenceBrowser
   ) {
+    this.progress = new Signal(this);
     this.styles = new StylesManager(trans, this);
     this.selector = new CitationSelector(trans);
     this.selector.hide();
@@ -182,6 +190,13 @@ class UnifiedCitationManager implements ICitationManager {
     panel: NotebookPanel,
     styleId: string | undefined = undefined
   ) {
+    const progressBase: Partial<IProgress> = {
+      label: this.trans.__('Updating citations'),
+      tooltip: this.trans.__(
+        'Citation manager is updating citations and bibliography...'
+      )
+    };
+    this.progress.emit({ ...progressBase, state: 'started' });
     const adapter = this.getAdapter(panel);
     if (!styleId) {
       styleId = adapter.getCitationStyle();
@@ -189,17 +204,24 @@ class UnifiedCitationManager implements ICitationManager {
     const processor = this.createProcessor(styleId);
     this.processors.set(panel, processor);
     adapter.citations = adapter.findCitations('all');
-    // TODO: progressbar
 
     const readyProcessor = await processor;
+    let progress = 0;
     for (const citationInsertData of this.processCitations(
       readyProcessor,
       adapter.citations
     )) {
+      progress += 1;
       adapter.updateCitation(citationInsertData);
+      this.progress.emit({
+        ...progressBase,
+        state: 'ongoing',
+        value: progress / adapter.citations.length
+      });
     }
     const bibliography = readyProcessor.makeBibliography();
     adapter.updateBibliography(this.processBibliography(bibliography));
+    this.progress.emit({ ...progressBase, state: 'completed' });
 
     this.referenceBrowser
       .getItem(this.collectOptions(adapter.citations))
@@ -551,14 +573,22 @@ const managerPlugin: JupyterFrontEndPlugin<ICitationManager> = {
   id: PLUGIN_ID,
   autoStart: true,
   requires: [INotebookTracker],
-  optional: [ISettingRegistry, ITranslator, ICommandPalette],
+  optional: [
+    ISettingRegistry,
+    ITranslator,
+    ICommandPalette,
+    IStatusBar,
+    ILayoutRestorer
+  ],
   provides: ICitationManager,
   activate: (
     app: JupyterFrontEnd,
     notebookTracker: INotebookTracker,
     settingRegistry: ISettingRegistry | null,
     translator: ITranslator | null,
-    commandPalette: ICommandPalette | null
+    commandPalette: ICommandPalette | null,
+    statusBar: IStatusBar | null,
+    restorer: ILayoutRestorer | null
   ) => {
     console.log('JupyterLab Citation Manager extension is activated!');
 
@@ -576,13 +606,23 @@ const managerPlugin: JupyterFrontEndPlugin<ICitationManager> = {
 
     addCommands(app, notebookTracker, manager, trans, commandPalette);
 
+    if (statusBar) {
+      statusBar.registerStatusItem(PLUGIN_ID, {
+        item: new UpdateProgress(manager.progress),
+        rank: 900
+      });
+    }
+
     try {
       referenceBrowser.id = 'jupyterlab-citation-manager:reference-browser';
       referenceBrowser.title.icon = bookshelfIcon;
       referenceBrowser.title.caption = 'Reference Browser';
       referenceBrowser.show();
-      console.log('hello');
+      // below the git extension but not at the very end
       app.shell.add(referenceBrowser, 'left', { rank: 850 });
+      if (restorer) {
+        restorer.add(referenceBrowser, referenceBrowser.id);
+      }
     } catch (error) {
       console.warn(
         'Could not attach the reference browser to the sidebar',
