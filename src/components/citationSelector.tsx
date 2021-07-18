@@ -227,6 +227,14 @@ export class CitationSelector extends ModalSelector<
       publication.type && publication.type in this.typeNames
         ? this.typeNames[publication.type]
         : publication.type;
+    const citationCounts =
+      data.citationsInDocument !== 0
+        ? this.trans._n(
+            '%1 occurrence',
+            '%1 occurrences',
+            data.citationsInDocument
+          )
+        : '';
     return (
       <div className={'cm-Option-content'}>
         <div className={'cm-Option-main'}>
@@ -236,13 +244,7 @@ export class CitationSelector extends ModalSelector<
             match={match ? match.title : null}
           />
           <span className={'cm-citationCount'}>
-            {data.citationsInDocument !== 0
-              ? this.trans._n(
-                  '%1 occurrence',
-                  '%1 occurrences',
-                  data.citationsInDocument
-                )
-              : ''}
+            {citationCounts}
           </span>
           <span className={'cm-year'}>{publication.date?.getFullYear()}</span>
           <span className={'cm-type'}>{type}</span>

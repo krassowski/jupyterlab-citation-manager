@@ -98,6 +98,14 @@ export class ReferenceBrowser extends Selector<
       publication.type && publication.type in this.typeNames
         ? this.typeNames[publication.type]
         : publication.type;
+    const citationCounts =
+      data.citationsInDocument !== 0
+        ? this.trans._n(
+            '%1 occurrence',
+            '%1 occurrences',
+            data.citationsInDocument
+          )
+        : '';
     return (
       <div className={'cm-Option-content'}>
         <div className={'cm-Option-main'}>
@@ -106,16 +114,12 @@ export class ReferenceBrowser extends Selector<
             title={publication.title}
             match={match ? match.title : null}
           />
-          <span className={'cm-citationCount'}>
+          <span className={'cm-citationCount'} title={citationCounts}>
             {data.citationsInDocument !== 0
-              ? this.trans._n(
-                  '%1 occurrence',
-                  '%1 occurrences',
-                  data.citationsInDocument
-                )
+              ? '(' + data.citationsInDocument + ')'
               : ''}
           </span>
-          <span className={'cm-year'}>{publication.date?.getFullYear()}</span>
+          <span className={'cm-year'} title={publication.date?.toUTCString()}>{publication.date?.getFullYear()}</span>
           <span className={'cm-type'}>{type}</span>
         </div>
         <div className={'cm-Option-details'}>

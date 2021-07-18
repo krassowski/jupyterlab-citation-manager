@@ -19,6 +19,7 @@ export interface IOption<D = any, M = any> {
 }
 
 const ACTIVE_CLASS = 'cm-mod-active';
+const FOCUS_CLASS = 'lm-mod-focused';
 
 export function anonymousMark(match: string): JSX.Element {
   return <mark key={UUID.uuid4()}>{match}</mark>;
@@ -179,6 +180,18 @@ export abstract class Selector<O, M> extends ReactWidget {
               ref={input => {
                 this.input = input;
               }}
+              onBlur={() => {
+                if (!this.input || !this.input.parentElement) {
+                  return;
+                }
+                this.input.parentElement.classList.remove(FOCUS_CLASS);
+              }}
+              onFocus={() => {
+                if (!this.input || !this.input.parentElement) {
+                  return;
+                }
+                this.input.parentElement.classList.add(FOCUS_CLASS);
+              }}
               autoFocus
             />
             <searchIcon.react className={'cm-SearchIcon'} />
@@ -281,13 +294,7 @@ export abstract class Selector<O, M> extends ReactWidget {
    * Handle the `'keydown'` event for the widget.
    */
   protected _evtKeydown(event: KeyboardEvent): void {
-    // Check for escape key
     switch (event.keyCode) {
-      case 27: // Escape.
-        event.stopPropagation();
-        event.preventDefault();
-        this.hideAndReset();
-        break;
       case 13: // Enter.
         this.acceptOption();
         break;
@@ -363,6 +370,22 @@ export abstract class ModalSelector<O, M> extends Selector<O, M> {
     this.addClass('cm-ModalSelector');
     // required to receive blur and focus events
     this.node.tabIndex = 0;
+  }
+
+  /**
+   * Handle the `'keydown'` event for the widget.
+   */
+  protected _evtKeydown(event: KeyboardEvent): void {
+    switch (event.keyCode) {
+      case 27: // Escape.
+        event.stopPropagation();
+        event.preventDefault();
+        this.hideAndReset();
+        break;
+      default:
+        super._evtKeydown(event);
+        break;
+    }
   }
 
   getItem(options: O[]): Promise<O> {
