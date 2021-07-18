@@ -3,6 +3,7 @@ import {
   CommandIDs,
   ICitableData,
   ICitableWrapper,
+  ICitationContext,
   ICitationOption
 } from '../types';
 import { TranslationBundle } from '@jupyterlab/translation';
@@ -18,6 +19,7 @@ import { bibliographyIcon } from '../icons';
 import * as React from 'react';
 import {
   CITATION_SELECTOR_CLASS,
+  citationCountsLabel,
   CitationOptionAuthors,
   citationOptionID,
   citationOptionModel,
@@ -33,6 +35,29 @@ function ShowReference(props: { publication: ICitableWrapper }) {
   return (
     <div className={'cm-ReferenceDetails'}>
       <code>{JSON.stringify(props.publication, null, 4)}</code>
+    </div>
+  );
+}
+
+function CitationsInContext(props: {
+  citations: ICitationContext[];
+  excerptMaxSpan: number;
+  label: string;
+  clickLabel: string;
+}) {
+  const citations = props.citations.map(citation => {
+    return (
+      <li onClick={() => citation.host.scrollIntoView()} title={props.clickLabel}>
+        {citation.excerpt.before.slice(-props.excerptMaxSpan)}
+        <span dangerouslySetInnerHTML={{ __html: citation.excerpt.citation }} />
+        {citation.excerpt.after.slice(0, props.excerptMaxSpan)}
+      </li>
+    );
+  });
+  return (
+    <div className={'cm-CitationsInContext'}>
+      <span className={'cm-CitationsInContext-label'}>{props.label}</span>
+      <ul className={'cm-CitationsInContext-list'}>{citations}</ul>
     </div>
   );
 }
@@ -62,8 +87,10 @@ export class ReferenceBrowser extends Selector<
 
   protected getInitialOptions(): ICitationOption[] {
     return this.options
-      .filter(option => option.citationsInDocument > 0)
-      .sort((a, b) => a.citationsInDocument - b.citationsInDocument);
+      .filter(option => option.citationsInDocument.length > 0)
+      .sort(
+        (a, b) => b.citationsInDocument.length - a.citationsInDocument.length
+      );
   }
 
   render(): JSX.Element {
@@ -98,14 +125,10 @@ export class ReferenceBrowser extends Selector<
       publication.type && publication.type in this.typeNames
         ? this.typeNames[publication.type]
         : publication.type;
-    const citationCounts =
-      data.citationsInDocument !== 0
-        ? this.trans._n(
-            '%1 occurrence',
-            '%1 occurrences',
-            data.citationsInDocument
-          )
-        : '';
+    const citationCounts = citationCountsLabel(
+      data.citationsInDocument,
+      this.trans
+    );
     return (
       <div className={'cm-Option-content'}>
         <div className={'cm-Option-main'}>
@@ -115,11 +138,13 @@ export class ReferenceBrowser extends Selector<
             match={match ? match.title : null}
           />
           <span className={'cm-citationCount'} title={citationCounts}>
-            {data.citationsInDocument !== 0
-              ? '(' + data.citationsInDocument + ')'
+            {data.citationsInDocument.length !== 0
+              ? '(' + data.citationsInDocument.length + ')'
               : ''}
           </span>
-          <span className={'cm-year'} title={publication.date?.toUTCString()}>{publication.date?.getFullYear()}</span>
+          <span className={'cm-year'} title={publication.date?.toUTCString()}>
+            {publication.date?.getFullYear()}
+          </span>
           <span className={'cm-type'}>{type}</span>
         </div>
         <div className={'cm-Option-details'}>
@@ -164,6 +189,18 @@ export class ReferenceBrowser extends Selector<
           >
             {publication.abstract}
           </div>
+          {data.citationsInDocument.length !== 0 ? (
+            <CitationsInContext
+              citations={data.citationsInDocument}
+              excerptMaxSpan={50}
+              label={this.trans._n(
+                'Cited %1 time in this document:',
+                'Cited %1 times in this document:',
+                data.citationsInDocument.length
+              )}
+              clickLabel={this.trans.__('Click to scroll to this citation.')}
+            />
+          ) : null}
         </div>
       </div>
     );

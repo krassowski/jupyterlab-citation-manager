@@ -84,6 +84,27 @@ export interface ICitableWrapper extends Partial<ICitableData> {
 }
 
 /**
+ * Where is this citation located?
+ */
+export interface ICitationContext {
+  /**
+   * The element in the document where citation is located,
+   * allowing to scroll to this citation.
+   */
+  host: HTMLElement;
+  /**
+   * An excerpt of the immediate surrounding of the citation.
+   *
+   * TODO: how to handle RTL languages?
+   */
+  excerpt: {
+    before: string;
+    citation: string;
+    after: string;
+  };
+}
+
+/**
  * A known publication or citation item that can be chosen by the user
  * to create a new citation
  */
@@ -94,7 +115,7 @@ export interface ICitationOption {
    *
    * Useful to prioritize frequently used options at the top.
    */
-  citationsInDocument: number;
+  citationsInDocument: ICitationContext[];
   /**
    * Associated publication if known; it may be partial
    * if user created their own <cite> entry, or if reference
@@ -125,7 +146,12 @@ export interface ICitation extends Partial<ICitableData> {
    */
   source: string;
   text: string;
+  context: ICitationContext;
 }
+
+type Optional<T, K extends keyof T> = Pick<Partial<T>, K> & Omit<T, K>;
+
+export type CitationInsertData = Optional<ICitation, 'context'>;
 
 export interface IProgress {
   state: 'started' | 'ongoing' | 'completed';
@@ -172,8 +198,8 @@ export interface IDocumentAdapter<T extends DocumentWidget> {
   getCitationStyle(): string | undefined;
   setCitationStyle(value: string): void;
 
-  insertCitation(citation: ICitation): void;
-  updateCitation(citation: ICitation): void;
+  insertCitation(citation: CitationInsertData): void;
+  updateCitation(citation: CitationInsertData): void;
 
   insertBibliography(bibliography: string): void;
   updateBibliography(bibliography: string): void;

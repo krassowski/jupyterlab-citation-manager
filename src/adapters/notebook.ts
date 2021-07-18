@@ -1,4 +1,5 @@
 import {
+  CitationInsertData,
   CitationQuerySubset,
   CommandIDs,
   ICitation,
@@ -49,7 +50,7 @@ export class NotebookAdapter implements IDocumentAdapter<NotebookPanel> {
     );
   }
 
-  protected formatCitation(citation: ICitation): string {
+  protected formatCitation(citation: CitationInsertData): string {
     const items =
       citation.items.length > 1
         ? JSON.stringify(citation.items)
@@ -57,7 +58,7 @@ export class NotebookAdapter implements IDocumentAdapter<NotebookPanel> {
     return `<cite id="${citation.citationId}" data-source="${citation.source}" data-items="${items}">${citation.text}</cite>`;
   }
 
-  insertCitation(citation: ICitation): void {
+  insertCitation(citation: CitationInsertData): void {
     // TODO: item data needs to be stored in the notebook metadata as well to enable two persons with tow different Zotero collections to collaborate
     //   and this needs to happen transparently. In that case ultimately all metadata apart from citation id could be stored in notebook or cell metadata.
     //   using cell metadata has an advantage of not keeping leftovers when deleting cells and its easier to copy-paste everything from notebook to notebook.
@@ -139,7 +140,11 @@ export class NotebookAdapter implements IDocumentAdapter<NotebookPanel> {
 
     this.chooseCells(subset).forEach(cell => {
       // TODO: subset >within< cell! (also always include the current cell in chooseCells)
-      citations.push(...extractCitations(cell.model.value.text));
+      citations.push(
+        ...extractCitations(cell.model.value.text, {
+          host: cell.node
+        })
+      );
     });
     // TODO: use cache of cells contents?
     return citations;

@@ -273,10 +273,6 @@ cite {
     white-space: break-spaces;
 }
 
-.cm-abstract {
-    padding: 0 14px;
-}
-
 .cm-abstract.cm-collapsed {
     --max-height: 80px;
     max-height: var(--max-height);
@@ -293,6 +289,29 @@ cite {
     top: calc(var(--max-height) - var(--overflow-indicator-height));
     position: absolute;
     left: 0;
+}
+
+.cm-Option-active-card {
+    padding: 4px 12px;
+    padding-right: 4px;
+}
+
+.cm-CitationsInContext {
+    margin-top: 8px;
+}
+
+.cm-CitationsInContext-list {
+    list-style-type: none;
+    padding: 0;
+}
+
+.cm-CitationsInContext-list li {
+    border-left: 4px solid var(--jp-border-color2);
+    padding-left: 8px;
+    font-style: italic;
+    color: var(--jp-content-font-color2);
+    margin: 4px 0;
+    margin-left: 8px;
 }
 
 /*

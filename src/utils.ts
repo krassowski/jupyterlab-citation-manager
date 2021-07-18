@@ -1,4 +1,9 @@
-import { ICitableData, ICitableWrapper, ICitation } from './types';
+import {
+  ICitableData,
+  ICitableWrapper,
+  ICitation,
+  ICitationContext
+} from './types';
 import marked from 'marked';
 import { DateContentModel } from './_csl_citation';
 
@@ -48,11 +53,23 @@ export class DefaultMap<K extends string | number | boolean, V extends any> {
   }
 }
 
-export function extractCitations(markdown: string): ICitation[] {
+function extractText(node?: ChildNode | null): string {
+  return node ? node?.textContent || '' : '';
+}
+
+export function extractCitations(
+  markdown: string,
+  context: Partial<ICitationContext>
+): ICitation[] {
   const html: string = marked(markdown);
   const div = document.createElement('div');
   div.innerHTML = html;
   return [...div.querySelectorAll('cite').values()].map(element => {
+    const excerpt = {
+      before: extractText(element.previousSibling),
+      citation: element.innerHTML,
+      after: extractText(element.nextSibling)
+    };
     return {
       citationId: element.id,
       items: element.dataset.items
@@ -61,7 +78,11 @@ export function extractCitations(markdown: string): ICitation[] {
           : [element.dataset.items]
         : [],
       source: element.dataset.source,
-      text: element.innerHTML
+      text: element.innerHTML,
+      context: {
+        ...context,
+        excerpt: excerpt
+      }
     } as ICitation;
   });
 }

@@ -1,7 +1,7 @@
 import IMatchResult = StringExt.IMatchResult;
 import { StringExt } from '@lumino/algorithm';
 import * as React from 'react';
-import { ICitableData, ICitationOption } from '../types';
+import { ICitableData, ICitationContext, ICitationOption } from '../types';
 import { anonymousMark, IOption, ModalSelector } from './selector';
 import { TranslationBundle } from '@jupyterlab/translation';
 import { NameVariable } from '../_csl_data';
@@ -21,7 +21,7 @@ export interface ICitationOptionMatch {
 export function CitationOptionTitle(props: {
   title: string | undefined;
   match: IMatchResult | null;
-}) {
+}): JSX.Element {
   return (
     <span className={'cm-title'}>
       {props.title
@@ -68,6 +68,15 @@ export function CitationSource(props: { source: string }): JSX.Element {
       {props.source[0]}
     </span>
   );
+}
+
+export function citationCountsLabel(
+  citations: ICitationContext[],
+  trans: TranslationBundle
+): string {
+  return citations.length !== 0
+    ? trans._n('%1 occurrence', '%1 occurrences', citations.length)
+    : '';
 }
 
 export function translateTypeLabels(
@@ -206,8 +215,10 @@ export class CitationSelector extends ModalSelector<
 
   protected getInitialOptions(): ICitationOption[] {
     return this.options
-      .filter(option => option.citationsInDocument > 0)
-      .sort((a, b) => a.citationsInDocument - b.citationsInDocument);
+      .filter(option => option.citationsInDocument.length > 0)
+      .sort(
+        (a, b) => b.citationsInDocument.length - a.citationsInDocument.length
+      );
   }
 
   protected dynamicClassForList(
@@ -227,14 +238,10 @@ export class CitationSelector extends ModalSelector<
       publication.type && publication.type in this.typeNames
         ? this.typeNames[publication.type]
         : publication.type;
-    const citationCounts =
-      data.citationsInDocument !== 0
-        ? this.trans._n(
-            '%1 occurrence',
-            '%1 occurrences',
-            data.citationsInDocument
-          )
-        : '';
+    const citationCounts = citationCountsLabel(
+      data.citationsInDocument,
+      this.trans
+    );
     return (
       <div className={'cm-Option-content'}>
         <div className={'cm-Option-main'}>
@@ -243,9 +250,7 @@ export class CitationSelector extends ModalSelector<
             title={publication.title}
             match={match ? match.title : null}
           />
-          <span className={'cm-citationCount'}>
-            {citationCounts}
-          </span>
+          <span className={'cm-citationCount'}>{citationCounts}</span>
           <span className={'cm-year'}>{publication.date?.getFullYear()}</span>
           <span className={'cm-type'}>{type}</span>
         </div>

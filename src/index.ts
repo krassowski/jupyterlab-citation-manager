@@ -12,6 +12,7 @@ import {
   CommandIDs,
   ICitableData,
   ICitation,
+  ICitationContext,
   ICitationItemData,
   ICitationManager,
   ICitationOption,
@@ -177,12 +178,13 @@ class UnifiedCitationManager implements ICitationManager {
   private collectOptions(existingCitations: ICitation[]): ICitationOption[] {
     const options = [];
     const citationLookup = new Map<string, ICitation>();
-    const citationCount = new DefaultMap<string, number>(() => 0);
+    const citationCount = new DefaultMap<string, ICitationContext[]>(() => []);
     for (const citation of existingCitations) {
       for (const item of citation.items) {
         const itemID = citation.source + '|' + item;
-        const previous: number = citationCount.get(itemID);
-        citationCount.set(itemID, previous + 1);
+        const previous: ICitationContext[] = citationCount.get(itemID);
+        previous.push(citation.context);
+        citationCount.set(itemID, previous);
       }
     }
     // collect from providers
