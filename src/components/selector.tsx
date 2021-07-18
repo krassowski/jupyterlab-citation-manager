@@ -147,9 +147,6 @@ export abstract class Selector<O, M> extends ReactWidget {
   }
 
   render(): JSX.Element {
-    // TODO: 2. make it NOT change input
-    // TODO: 3. make it focus the input
-
     const renderOptions = (_: any, data: any) => {
       const options = data as IOption[];
       if (!options) {
@@ -433,8 +430,14 @@ export abstract class ModalSelector<O, M> extends Selector<O, M> {
     switch (event.type) {
       case 'blur': {
         // if the focus shifted outside of this DOM element, hide and reset.
-        const target = event.target as HTMLElement;
-        if (this.node.contains(target as HTMLElement)) {
+        if (
+          // focus went away from child element
+          this.node.contains(event.target as HTMLElement) &&
+          // and it did NOT go to another child element but someplace else
+          !this.node.contains(
+            (event as MouseEvent).relatedTarget as HTMLElement
+          )
+        ) {
           event.stopPropagation();
           this.hideAndReset();
         }
