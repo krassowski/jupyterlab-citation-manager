@@ -117,9 +117,10 @@ function getDate(date: DateContentModel): Date {
   if (date['date-parts']) {
     const startDate = date['date-parts'][0];
     if (startDate.length === 1) {
-      return new Date(
-        ...(startDate.map(value => parseInt(value + '', 10)) as [number])
-      );
+      // best guess is middle of the year;
+      // beware using single-argument constructor - it treats the number
+      // as a timestamp rather than as a year.
+      return new Date(parseInt(startDate[0] + '', 10), 6);
     }
     if (startDate.length === 2) {
       return new Date(
