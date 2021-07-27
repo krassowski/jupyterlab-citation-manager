@@ -30,6 +30,9 @@ import {
 } from './citationSelector';
 import { ReadonlyPartialJSONObject } from '@lumino/coreutils';
 import { Dialog, showDialog } from '@jupyterlab/apputils';
+import { Message } from '@lumino/messaging';
+
+const CITE_PROC_ATTRIBUTION_CLASS = 'cm-citeprocjs-cpal-attribution';
 
 function ShowReference(props: { publication: ICitableWrapper }) {
   return (
@@ -106,8 +109,24 @@ export class ReferenceBrowser extends Selector<
           />
         </div>
         {super.render()}
+        <div className={CITE_PROC_ATTRIBUTION_CLASS}>
+          Citation Manager extension uses <i>citeproc.js</i> which is © Frank
+          Bennett; <i>citeproc-js</i> implements the{' '}
+          <a href={'https://citationstyles.org/'}>Citation Style Language</a>.
+        </div>
       </div>
     );
+  }
+
+  protected onAfterAttach(msg: Message): void {
+    super.onAfterAttach(msg);
+    window.setTimeout(() => {
+      const node = this.node.querySelector('.' + CITE_PROC_ATTRIBUTION_CLASS);
+      if (node) {
+        node.classList.add('cm-mod-hidden');
+      }
+      // 30 seconds should be enough
+    }, 30 * 1000);
   }
 
   renderOption(props: {

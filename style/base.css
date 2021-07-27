@@ -102,6 +102,18 @@
     color: grey;
 }
 
+.cm-citeprocjs-cpal-attribution {
+    position: absolute;
+    bottom: 0;
+    padding: 8px;
+    color: var(--jp-ui-font-color1);
+    background: var(--jp-layout-color0);
+}
+
+.cm-citeprocjs-cpal-attribution.cm-mod-hidden {
+    display: none;
+}
+
 .cm-CitationSelector .cm-Option-content {
     flex-direction: column;
 }

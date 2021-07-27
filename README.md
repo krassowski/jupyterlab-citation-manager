@@ -223,3 +223,20 @@ The CSL styles are contributed by individual authors to the CSL project; this ex
 
 Please see the [`style/icons/README.md`](style/icons/README.md)
 for information on the licences of icons included in the distribution;
+
+### citeproc-js
+
+`citeproc-js` is used by `jupyterlab-citation-manager` to format the citation and bibliography text; `citeproc-js` is
+dual-licenced under CPAL 1.0 (or newer) or AGPLv3 (or newer); in order to allow for the distribution of this extension
+with other works the CPAL 1.0 licence was adopted for re-distribution of `cireproc-js` together with this extension.
+The Exhibit A of `citeproc-js` CPAL 1.0 licence is presented below for informational purposes:
+
+> EXHIBIT A. Common Public Attribution License Version 1.0.
+> “The contents of this file are subject to the Common Public Attribution License Version 1.0 (the “License”); you may not use this file except in compliance with the License. You may obtain a copy of the License at https://opensource.org/licenses/CPAL-1.0. The License is based on the Mozilla Public License Version 1.1 but Sections 14 and 15 have been added to cover use of software over a computer network and provide for limited attribution for the Original Developer. In addition, Exhibit A has been modified to be consistent with Exhibit B.
+> Software distributed under the License is distributed on an “AS IS” basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License for the specific language governing rights and limitations under the License.
+> The Original Code is citeproc-js.
+> The Original Developer is not the Initial Developer and is __________. If left blank, the Original Developer is the Initial Developer.
+> The Initial Developer of the Original Code is Frank Bennett. All portions of the code written by Frank Bennett are Copyright (c) 2009-2015. All Rights Reserved.
+> Contributor ______________________.
+> Alternatively, the contents of this file may be used under the terms of the GNU AFFERO GENERAL PUBLIC LICENSE (the AGPLv3 License), in which case the provisions of AGPLv3 License are applicable instead of those above.
+> If you wish to allow use of your version of this file only under the terms of the AGPLv3 License and not to allow others to use your version of this file under the CPAL, indicate your decision by deleting the provisions above and replace them with the notice and other provisions required by the AGPLv3 License. If you do not delete the provisions above, a recipient may use your version of this file under either the CPAL or the AGPLv3 License.”
