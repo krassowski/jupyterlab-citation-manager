@@ -124,6 +124,9 @@ export class ReferenceBrowser extends Selector<
       data.citationsInDocument,
       this.trans
     );
+    // TODO: only show Open in JupyterLab button if we got a link to pubmed, pubmed central and other trusted databased?
+    // TODO: allow to customise proxy?
+    // TODO: maybe we could fetch PDFs and XMLs and display uniformly; should ask the provider if they have a link.
     return (
       <div className={'cm-Option-content'}>
         <div className={'cm-Option-main'}>

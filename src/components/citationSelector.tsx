@@ -6,6 +6,7 @@ import { anonymousMark, IOption, ModalSelector } from './selector';
 import { TranslationBundle } from '@jupyterlab/translation';
 import { NameVariable } from '../_csl_data';
 import { InfinityIfMissing } from '../utils';
+import {UUID} from "@lumino/coreutils";
 
 export const CITATION_SELECTOR_CLASS = 'cm-CitationSelector';
 
@@ -52,7 +53,7 @@ export function CitationOptionAuthors(props: {
         const match = matches[i];
         const authorLabel = formatAuthor(author);
         return (
-          <span className={'cm-author'}>
+          <span className={'cm-author'} key={UUID.uuid4()}>
             {match
               ? StringExt.highlight(authorLabel, match.indices, anonymousMark)
               : authorLabel}
@@ -161,7 +162,10 @@ export const citationOptionModel = {
     const yearResult =
       InfinityIfMissing(a.match.year?.absoluteDifference) -
       InfinityIfMissing(b.match.year?.absoluteDifference);
-    return creatorsResult || titleResult || yearResult;
+    const citationsResult =
+      InfinityIfMissing(b.data.citationsInDocument.length) -
+      InfinityIfMissing(a.data.citationsInDocument.length);
+    return creatorsResult || titleResult || yearResult || citationsResult;
   },
   match(option: ICitationOption, query: string): ICitationOptionMatch {
     query = query.toLowerCase();
@@ -255,8 +259,12 @@ export class CitationSelector extends ModalSelector<
       data.citationsInDocument,
       this.trans
     );
+    const contentClasses = ['cm-Option-content'];
+    if (data.isFallback) {
+      contentClasses.push('cm-mod-fallback');
+    }
     return (
-      <div className={'cm-Option-content'}>
+      <div className={contentClasses.join(' ')}>
         <div className={'cm-Option-main'}>
           <CitationSource source={data.source} />
           <CitationOptionTitle

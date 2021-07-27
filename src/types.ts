@@ -1,32 +1,11 @@
 import { CslData } from './_csl_data';
-import { Token } from '@lumino/coreutils';
+import { ReadonlyPartialJSONObject, Token } from '@lumino/coreutils';
 import { DocumentWidget } from '@jupyterlab/docregistry';
 import { LabIcon } from '@jupyterlab/ui-components';
 import IIcon = LabIcon.IIcon;
 import { ISignal } from '@lumino/signaling';
 
 export type ICitableData = CslData[0];
-
-/**
- * Citeproc Sys
- */
-export interface ICitationSystem {
-  retrieveLocale: (lang: string) => string;
-  retrieveItem: (id: string) => ICitableData;
-  /**
-   * Generate string that will be appended to the bibliography entry to jump to the (first) citation in the document.
-   */
-  embedBibliographyEntry?: (itemID: string) => string;
-  /**
-   * Pos-process citation entry.
-   */
-  wrapCitationEntry?: (
-    entry: string,
-    itemID: string,
-    locatorText: string,
-    suffixText: string
-  ) => string;
-}
 
 interface IData {
   bibchange: boolean;
@@ -47,36 +26,90 @@ export type CitationToInsert = {
   citationItems: ICitationItemData[];
 };
 
-export type CiteProcBibliography = [
-  {
-    maxoffset: number;
-    entryspacing: number;
-    linespacing: number;
-    hangingindent: boolean;
-    'second-field-align': boolean;
-    bibstart: string;
-    bibend: string;
-    bibliography_errors: any[];
-    entry_ids: string[];
-  },
-  string[]
-];
+/**
+ * Unambiguous identifier of a citable item.
+ *
+ * The `id` property alone is not unambiguous as there is no guarantee
+ * that there will never be  a conflict between identifiers from different
+ * sources, hence the source needs to be included as well.
+ *
+ * Use `itemIdToPrimitive` to get the two values merged into unique primitive id.
+ */
+export interface IUnambiguousItemIdentifier extends ReadonlyPartialJSONObject {
+  /**
+   * The reference provider id (e.g. "zotero")
+   */
+  source: string;
+  id: string;
+}
 
 /**
- * https://citeproc-js.readthedocs.io/en/latest/running.html
+ * A mapping between citation identifiers and arrays of citable items.
+ *
+ * Note: a citation may refer to more than one item, in which case it
+ * is referred to as a "citation cluster".
  */
-export interface ICiteProcEngine {
-  updateItems(idList: string[]): void;
-  updateUncitedItems(idList: string[]): void;
-  processCitationCluster(
-    citation: CitationToInsert,
-    citationsPre: CitationLocation[],
-    citationsPost: CitationLocation[]
-  ): [IData, CitationUpdate[]];
-  appendCitationCluster(
-    citation: CitationToInsert
-  ): [number, string, CitationID][];
-  makeBibliography(): CiteProcBibliography;
+export interface ICitationMap extends ReadonlyPartialJSONObject {
+  [k: string]: IUnambiguousItemIdentifier[];
+}
+
+export namespace CiteProc {
+  export type Bibliography = [
+    {
+      maxoffset: number;
+      entryspacing: number;
+      linespacing: number;
+      hangingindent: boolean;
+      'second-field-align': boolean;
+      bibstart: string;
+      bibend: string;
+      bibliography_errors: any[];
+      entry_ids: string[];
+    },
+    string[]
+  ];
+
+  /**
+   * https://citeproc-js.readthedocs.io/en/latest/running.html
+   */
+  export interface IEngine {
+    updateItems(idList: string[]): void;
+
+    updateUncitedItems(idList: string[]): void;
+
+    processCitationCluster(
+      citation: CitationToInsert,
+      citationsPre: CitationLocation[],
+      citationsPost: CitationLocation[]
+    ): [IData, CitationUpdate[]];
+
+    appendCitationCluster(
+      citation: CitationToInsert
+    ): [number, string, CitationID][];
+
+    makeBibliography(): Bibliography;
+  }
+
+  /**
+   * Citeproc Sys
+   */
+  export interface ISystem {
+    retrieveLocale(lang: string): string;
+    retrieveItem(id: string): ICitableData;
+    /**
+     * Generate string that will be appended to the bibliography entry to jump to the (first) citation in the document.
+     */
+    embedBibliographyEntry?(itemID: string): string;
+    /**
+     * Pos-process citation entry.
+     */
+    wrapCitationEntry?(
+      entry: string,
+      itemID: string,
+      locatorText: string,
+      suffixText: string
+    ): string;
+  }
 }
 
 export interface ICitableWrapper extends Partial<ICitableData> {
@@ -123,6 +156,24 @@ export interface ICitationOption {
    * reference provider database).
    */
   publication: ICitableWrapper;
+  /**
+   * Was the citation data retrieved from the notebook metadata
+   * rather than from a connected citation provider?
+   *
+   * If we have a fallback it might indicate the item could have been deleted
+   * in the users collection, or comes from a collection of another co-author.
+   */
+  isFallback: boolean;
+}
+
+export interface ICitableItemRecords extends ReadonlyPartialJSONObject {
+  // ignoring custom CSL entries here as typescript cannot
+  // process their types which is effectively `any`
+  [id: string]: Omit<ICitableData, 'custom'>;
+}
+
+export interface ICitableItemRecordsBySource extends ReadonlyPartialJSONObject {
+  [source: string]: ICitableItemRecords;
 }
 
 /**
@@ -138,13 +189,10 @@ export interface ICitation extends Partial<ICitableData> {
    * The IDs of the citable objects (cited works); a single citation
    * may cite several works (e.g. of the same person).
    *
-   * The array gets serialized for storage in HTML attributes.
+   * This array gets serialized for storage in cell attributes.
    */
-  items: string[];
-  /**
-   * The reference provider id (e.g. "zotero")
-   */
-  source: string;
+  items: IUnambiguousItemIdentifier[];
+  data?: DOMStringMap;
   text: string;
   context: ICitationContext;
 }
@@ -192,6 +240,12 @@ export interface IDocumentAdapter<T extends DocumentWidget> {
    */
   citations: ICitation[];
   document: T;
+
+  /**
+   * Perform migration from legacy format.
+   */
+  migrateFormat(): Promise<boolean>;
+
   /**
    * Use getter to read it from metadata, and setter to set it to metadata.
    */
@@ -205,6 +259,16 @@ export interface IDocumentAdapter<T extends DocumentWidget> {
   updateBibliography(bibliography: string): void;
 
   findCitations(subset: CitationQuerySubset): ICitation[];
+
+  /**
+   * Document adapter is not a provider of citable items,
+   * but it can store the items for citations contained
+   * within, which is a useful fallback for collaborative
+   * editing (as the citation will not get lost when edited
+   * by a co-author).
+   */
+  getCitableItemsFallbackData(): ICitableItemRecordsBySource | null;
+  setCitableItemsFallbackData(data: ICitableItemRecordsBySource): void;
 }
 
 export interface IStylePreview {
@@ -222,7 +286,7 @@ export interface IStylePreviewProvider {
 }
 
 export interface ICitationManager
-  extends ICitationSystem,
+  extends CiteProc.ISystem,
     IStylePreviewProvider {
   registerReferenceProvider(provider: IReferenceProvider): void;
   addCitation(documentWidget: DocumentWidget): void;

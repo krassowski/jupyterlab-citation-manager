@@ -3,6 +3,8 @@
 ![Github Actions Status](https://github.com/krassowski/jupyterlab-citation-manager/workflows/Build/badge.svg)
 [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/krassowski/jupyterlab-citation-manager/main?urlpath=lab)
 
+**Status: Work In Progress**. The underlying format may change; the support for migration from cite2c is provisional.
+
 Citation Manager for JupyterLab:
 - enables adding citations to Jupyter notebooks in Markdown cells,
 - keeps the bibliography in sync with the citations in the document,
@@ -10,6 +12,13 @@ Citation Manager for JupyterLab:
 - offers a way to effectively search through your collection of references,
 - integrates with the Zotero® service (Connector for Zotero) by default,
 - is modular in design, allowing for integration of other reference managers in the future.
+
+The data of each reference (a.k.a. *citable item*) is stored in the notebook metadata,
+while a mapping between citation ID and the citable items is stored in the cell metadata.
+- storing full data of each citable item in the notebook enables:
+    - collaboration between multiple users with separate Zotero collections,
+    - retaining the data for citation which got removed from private collection.
+- storing mapping between citation id and citable items in the cell metadata allows to copy cells between notebooks.
 
 ## Usage
 
@@ -205,14 +214,6 @@ git commit csl-styles
 
 Zotero is a registered trademark of the [Corporation for Digital Scholarship](http://digitalscholar.org/);
 our extension (Connector for Zotero) is not affiliated with the Corporation in any way.
-
-Once sufficient quality is reached we will try to contact the Corporation to ensure
-that they are happy with this extension, both on the API implementation side and on
-our (solely-informative) use of Zotero trademark.
-
-As the reference providers are standalone plugins we envision a future in which the
-Connector for Zotero plugin could be ceded into the Corporation's authority, and
-solely focus this repository on providing the best, interoperable citation experience.
 
 #### CSL styles
 

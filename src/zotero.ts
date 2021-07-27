@@ -319,6 +319,7 @@ export class ZoteroClient implements IReferenceProvider {
     this.progress.emit({ ...progressBase, state: 'started' });
     const publications = await this.loadAll(
       'users/' + this._user?.id + '/items',
+      // TODO: also fetch json to get the full tags and collections data and parse from <zapi:subcontent>?
       'csljson',
       'items',
       true,
@@ -358,7 +359,6 @@ export class ZoteroClient implements IReferenceProvider {
       lastModifiedLibraryVersion: this.lastModifiedLibraryVersion,
       citableItems: Object.fromEntries(this.citableItems)
     } as IZoteroPersistentCacheState;
-    console.log(state);
     return this.state.save(PLUGIN_ID, state);
   }
 
@@ -393,7 +393,6 @@ export class ZoteroClient implements IReferenceProvider {
       }
       responses.push(result);
       const links = parseLinks(result?.headers.get('Link') as string);
-      console.log('links', links);
       const next = links.get('next')?.url;
       if (next) {
         const nextParams = Object.fromEntries(
@@ -425,7 +424,6 @@ export class ZoteroClient implements IReferenceProvider {
     const results = [];
     for (const response of responses) {
       let responseItems = await response.json();
-      console.log(responseItems);
       if (extract) {
         responseItems = responseItems[extract];
       }
@@ -443,7 +441,6 @@ export class ZoteroClient implements IReferenceProvider {
         return;
       }
       return response.json().then(result => {
-        console.log(result);
         this._user = {
           name: result.username,
           id: result.userID

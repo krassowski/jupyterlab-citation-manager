@@ -9,7 +9,6 @@ import { INotebookTracker, NotebookPanel } from '@jupyterlab/notebook';
 import { DocumentWidget } from '@jupyterlab/docregistry';
 import { Debouncer } from '@lumino/polling';
 import {
-  CiteProcBibliography,
   CommandIDs,
   ICitableData,
   ICitation,
@@ -17,7 +16,6 @@ import {
   ICitationItemData,
   ICitationManager,
   ICitationOption,
-  ICiteProcEngine,
   IDocumentAdapter,
   IStylePreviewProvider,
   IReferenceProvider,
@@ -25,7 +23,10 @@ import {
   IStyleManagerResponse,
   IPreviewNotAvailable,
   IStylePreview,
-  IProgress
+  IProgress,
+  CiteProc,
+  IUnambiguousItemIdentifier,
+  ICitableItemRecordsBySource
 } from './types';
 import { zoteroPlugin } from './zotero';
 import { DefaultMap, harmonizeData, simpleRequest } from './utils';
@@ -101,17 +102,27 @@ interface ICancellablePromise<T> {
   done: boolean;
 }
 
+/**
+ * Transform the unambiguous identifier of a citable item
+ * to a primitive JavaScript value (e.g. a string) so that
+ * it can be used in associative arrays/maps/records.
+ */
+export function itemIdToPrimitive(item: IUnambiguousItemIdentifier): string {
+  return item.source + '|' + item.id;
+}
+
 class UnifiedCitationManager implements ICitationManager {
   private providers: Map<string, IReferenceProvider>;
   private adapters: WeakMap<DocumentWidget, IDocumentAdapter<DocumentWidget>>;
   private selector: CitationSelector;
   private styles: StylesManager;
-  private processors: WeakMap<DocumentWidget, Promise<ICiteProcEngine>>;
+  private processors: WeakMap<DocumentWidget, Promise<CiteProc.IEngine>>;
   private localeCache: Map<string, string>;
   protected defaultStyleID = 'apa.csl';
   protected allReady: ICancellablePromise<any>;
 
   progress: Signal<UnifiedCitationManager, IProgress>;
+  private currentAdapter: IDocumentAdapter<any> | null = null;
 
   protected createAllReadyPromiseWrapper(): ICancellablePromise<any> {
     const REASON_CANCELLED = 'cancelled';
@@ -169,12 +180,29 @@ class UnifiedCitationManager implements ICitationManager {
       panel.content.modelContentChanged.connect(() => {
         debouncedUpdate.invoke().catch(console.warn);
       });
+
+      panel.context.ready.then(() => {
+        const adapter = this.getAdapter(panel);
+        adapter.migrateFormat().then(async migrated => {
+          if (migrated) {
+            console.log('Migrated citations, will refresh now...');
+            await this.processFromScratch(panel);
+          }
+        });
+      });
+
+      panel.context.saveState.connect((sender, state) => {
+        if (state === 'started') {
+          this.beforeSave(panel);
+        }
+      });
     });
     notebookTracker.currentChanged.connect((tracker, panel) => {
       if (!panel) {
         return;
       }
-      this.updateReferenceBrowser(this.getAdapter(panel));
+      this.currentAdapter = this.getAdapter(panel);
+      this.updateReferenceBrowser(this.currentAdapter);
     });
     this.providers = new Map();
     if (settingsRegistry) {
@@ -218,21 +246,22 @@ class UnifiedCitationManager implements ICitationManager {
   }
 
   protected *processCitations(
-    processor: ICiteProcEngine,
+    processor: CiteProc.IEngine,
     citations: ICitation[]
   ): Generator<ICitation> {
     let i = 0;
     for (const citation of citations) {
       // TODO: this could be rewritten to use `processCitationCluster` directly
       //  which should avoid an extra loop in `appendCitationCluster` driving complexity up
+      // console.log('processing', citation);
       const [result] = processor.appendCitationCluster({
         properties: {
           noteIndex: i
         },
         citationID: citation.citationId,
-        citationItems: citation.items.map(itemID => {
+        citationItems: citation.items.map(item => {
           return {
-            id: citation.source + '|' + itemID
+            id: itemIdToPrimitive(item)
           } as ICitationItemData;
         })
       });
@@ -289,8 +318,9 @@ class UnifiedCitationManager implements ICitationManager {
       }
     }
     const existingCitations = adapter ? adapter.citations : [];
+    const fallbackData = adapter ? adapter.getCitableItemsFallbackData() : null;
     this.referenceBrowser
-      .getItem(this.collectOptions(existingCitations))
+      .getItem(this.collectOptions(existingCitations, fallbackData))
       .catch(console.warn);
   }
 
@@ -323,16 +353,20 @@ class UnifiedCitationManager implements ICitationManager {
     });
   }
 
-  private collectOptions(existingCitations: ICitation[]): ICitationOption[] {
+  private collectOptions(
+    existingCitations: ICitation[],
+    fallbackItemData: ICitableItemRecordsBySource | null
+  ): ICitationOption[] {
     const options = [];
-    const citationLookup = new Map<string, ICitation>();
+    const citationLookup = new Map<string, IUnambiguousItemIdentifier>();
     const citationCount = new DefaultMap<string, ICitationContext[]>(() => []);
     for (const citation of existingCitations) {
-      for (const item of citation.items) {
-        const itemID = citation.source + '|' + item;
-        const previous: ICitationContext[] = citationCount.get(itemID);
+      for (const itemID of citation.items) {
+        const primitiveID = itemIdToPrimitive(itemID);
+        const previous: ICitationContext[] = citationCount.get(primitiveID);
         previous.push(citation.context);
-        citationCount.set(itemID, previous);
+        citationCount.set(primitiveID, previous);
+        citationLookup.set(primitiveID, itemID);
       }
     }
     // collect from providers
@@ -349,15 +383,45 @@ class UnifiedCitationManager implements ICitationManager {
         } as ICitationOption);
       }
     }
-    // add citations that already are in document but do not match the providers
-    for (const [id, citation] of citationLookup.entries()) {
-      if (!addedFromProviders.has(id)) {
+    const failedToGetFallbackFor = [];
+    // add citable items that already are in document but do not match the providers
+    for (const [primitiveID, itemID] of citationLookup.entries()) {
+      if (!addedFromProviders.has(primitiveID)) {
+        if (!fallbackItemData) {
+          failedToGetFallbackFor.push({
+            item: itemID,
+            reason: 'fallback missing'
+          });
+          continue;
+        }
+        if (!(itemID.source in fallbackItemData)) {
+          failedToGetFallbackFor.push({
+            item: itemID,
+            reason: 'fallback for this source missing'
+          });
+          continue;
+        }
+        const sourceFallback = fallbackItemData[itemID.source];
+        if (!(itemID.id in sourceFallback)) {
+          failedToGetFallbackFor.push({
+            item: itemID,
+            reason: 'fallback for this item missing'
+          });
+          continue;
+        }
         options.push({
-          source: citation.source,
-          publication: citation as Partial<ICitableData>,
-          citationsInDocument: citationCount.get(id)
+          source: itemID.source,
+          publication: sourceFallback[itemID.id],
+          isFallback: true,
+          citationsInDocument: citationCount.get(primitiveID)
         });
       }
+    }
+    if (failedToGetFallbackFor.length) {
+      console.warn(
+        'Failed to get fallback metadata for some items and those cannot be displayed',
+        failedToGetFallbackFor
+      );
     }
     return options;
   }
@@ -395,16 +459,51 @@ class UnifiedCitationManager implements ICitationManager {
     return '';
   }
 
+  beforeSave(content: NotebookPanel) {
+    const adapter = this.getAdapter(content);
+    const citations = adapter.findCitations('all');
+    const citableItems = new DefaultMap<string, Set<string>>(() => new Set());
+    for (const citation of citations) {
+      for (const item of citation.items) {
+        const itemsSet = citableItems.get(item.source);
+        citableItems.set(item.source, itemsSet.add(item.id));
+      }
+    }
+    console.log(citableItems);
+    adapter.setCitableItemsFallbackData(
+      Object.fromEntries(
+        [...citableItems.entries()].map(([source, items]) => {
+          return [
+            source,
+            Object.fromEntries(
+              [...items.values()].sort().map(id => {
+                return [
+                  id,
+                  this.retrieveItem(itemIdToPrimitive({ source, id: id }))
+                ];
+              })
+            )
+          ];
+        })
+      )
+    );
+  }
+
   addCitation(content: NotebookPanel) {
+    const originallyFocusedElement = document.activeElement;
     const adapter = this.getAdapter(content);
     // TODO: remove
     adapter.citations = adapter.findCitations('all');
+    const fallbackData = adapter ? adapter.getCitableItemsFallbackData() : null;
 
     // do not search document for citations, but if any are already cached prioritize those
     const citationsAlreadyInDocument = adapter.citations;
     // TODO replace selection list with a neat modal selector with search option
 
-    const options = this.collectOptions(citationsAlreadyInDocument);
+    const options = this.collectOptions(
+      citationsAlreadyInDocument,
+      fallbackData
+    );
 
     this.selector
       .getItem(options)
@@ -431,8 +530,8 @@ class UnifiedCitationManager implements ICitationManager {
         const citationsAfterMap: Record<number, ICitation> = Object.fromEntries(
           citationsAfter.map((c, index) => [index + 1, c])
         );
-        console.log('before', citationsBefore);
-        console.log('after', citationsAfter);
+        // console.log('before', citationsBefore);
+        // console.log('after', citationsAfter);
 
         const result = processor.processCitationCluster(
           {
@@ -460,10 +559,13 @@ class UnifiedCitationManager implements ICitationManager {
 
         for (const [indexToUpdate, newText] of citationsToUpdate) {
           if (indexToUpdate === citationsBefore.length) {
+            const itemID: IUnambiguousItemIdentifier = {
+              id: chosenOption.publication.id as string,
+              source: chosenOption.source
+            };
             (adapter as NotebookAdapter).insertCitation({
-              source: chosenOption.source,
               text: newText,
-              items: [chosenOption.publication.id as string],
+              items: [itemID],
               citationId: newCitationID
             });
           } else {
@@ -489,19 +591,30 @@ class UnifiedCitationManager implements ICitationManager {
 
         const bibliography = processor.makeBibliography();
         adapter.updateBibliography(this.processBibliography(bibliography));
+        adapter.citations = adapter.findCitations('all');
+        this.updateReferenceBrowser(adapter);
       })
       .finally(() => {
-        this.refocusWidget(content);
+        this.refocusWidget(content, originallyFocusedElement);
       });
   }
 
-  private refocusWidget(content: NotebookPanel) {
+  private refocusWidget(
+    content: NotebookPanel,
+    originallyFocusedElement: Element | null
+  ) {
     setTimeout(() => {
-      content.content.widgets[content.content.activeCellIndex].editor.focus();
+      if (originallyFocusedElement) {
+        // TODO test
+        (originallyFocusedElement as HTMLElement)?.focus();
+      } else {
+        // if nothing was focused, focus the active cell
+        content.content.widgets[content.content.activeCellIndex].editor.focus();
+      }
     }, 0);
   }
 
-  protected processBibliography(bibliography: CiteProcBibliography): string {
+  protected processBibliography(bibliography: CiteProc.Bibliography): string {
     return (
       '\n' +
       (bibliography[0].bibstart || '') +
@@ -511,7 +624,7 @@ class UnifiedCitationManager implements ICitationManager {
     );
   }
 
-  async createProcessor(styleID?: string): Promise<ICiteProcEngine> {
+  async createProcessor(styleID?: string): Promise<CiteProc.IEngine> {
     if (!styleID) {
       styleID = this.defaultStyleID;
     }
@@ -540,7 +653,7 @@ class UnifiedCitationManager implements ICitationManager {
   }
 
   async addBibliography(content: NotebookPanel) {
-    console.log('adding bibliography');
+    console.debug('Adding bibliography');
     const adapter = this.getAdapter(content);
     const processor = await this.processors.get(content);
     if (!processor) {
@@ -548,11 +661,11 @@ class UnifiedCitationManager implements ICitationManager {
       return;
     }
     const bibliography = processor.makeBibliography();
-    console.log(bibliography);
     adapter.insertBibliography(this.processBibliography(bibliography));
   }
 
   changeStyle(content: NotebookPanel) {
+    const originallyFocusedElement = document.activeElement;
     this.styles
       .selectStyle()
       .then(style => {
@@ -561,7 +674,7 @@ class UnifiedCitationManager implements ICitationManager {
         this.processFromScratch(content, style.style.id).then(console.warn);
       })
       .finally(() => {
-        this.refocusWidget(content);
+        this.refocusWidget(content, originallyFocusedElement);
       });
   }
 
@@ -569,7 +682,23 @@ class UnifiedCitationManager implements ICitationManager {
     const splitPos = id.indexOf('|');
     const provider = id.slice(0, splitPos);
     const key = id.slice(splitPos + 1);
-    const item = this.providers.get(provider)?.citableItems.get(key);
+    let item = this.providers.get(provider)?.citableItems.get(key);
+    // fallback
+    if (!item && this.currentAdapter) {
+      const fallbackData = this.currentAdapter.getCitableItemsFallbackData();
+      if (!fallbackData) {
+        console.log(`No fallback data to resolve ${key}`);
+      } else {
+        if (provider in fallbackData) {
+          if (!(key in fallbackData[provider])) {
+            console.log(`${key} not in fallback for ${provider}`);
+          }
+          item = fallbackData[provider][key];
+        } else {
+          console.log(`${provider} not in fallback data`);
+        }
+      }
+    }
     if (!item) {
       throw Error(`Provider did not provide item for ${key}`);
     }

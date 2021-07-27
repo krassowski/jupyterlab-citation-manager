@@ -97,6 +97,11 @@
     display: flex;
 }
 
+.cm-Option-content.cm-mod-fallback {
+    /* TODO */
+    color: grey;
+}
+
 .cm-CitationSelector .cm-Option-content {
     flex-direction: column;
 }

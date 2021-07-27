@@ -2,7 +2,8 @@ import {
   ICitableData,
   ICitableWrapper,
   ICitation,
-  ICitationContext
+  ICitationContext,
+  ICitationMap
 } from './types';
 import marked from 'marked';
 import { DateContentModel } from './_csl_citation';
@@ -67,7 +68,8 @@ function extractText(node?: ChildNode | null): string {
 
 export function extractCitations(
   markdown: string,
-  context: Partial<ICitationContext>
+  context: Partial<ICitationContext>,
+  citationToItems: ICitationMap
 ): ICitation[] {
   const html: string = marked(markdown);
   const div = document.createElement('div');
@@ -78,15 +80,32 @@ export function extractCitations(
       citation: element.innerHTML,
       after: extractText(element.nextSibling)
     };
-    return {
-      citationId: element.id,
-      items: element.dataset.items
+
+    let itemsIdentifiers =
+      citationToItems[
+        // fallback for cite2c
+        element.id ? element.id : (element.dataset.cite as string)
+      ];
+
+    // TODO delete this? standardize this?
+    if (!itemsIdentifiers) {
+      itemsIdentifiers = element.dataset.items
         ? element.dataset.items.startsWith('[')
           ? JSON.parse(element.dataset.items)
-          : [element.dataset.items]
-        : [],
-      source: element.dataset.source,
+          : [
+              {
+                source: element.dataset.source as string,
+                id: element.dataset.items
+              }
+            ]
+        : [];
+    }
+
+    return {
+      citationId: element.id,
+      items: itemsIdentifiers,
       text: element.innerHTML,
+      data: element.dataset,
       context: {
         ...context,
         excerpt: excerpt
