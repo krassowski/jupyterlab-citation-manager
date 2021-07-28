@@ -65,14 +65,14 @@ and enable a quick preview of citation context and navigation to the relevant pl
 (by clicking on the citation context).
 
 
-[bookshelf]: style/icons/bookshelf.svg?sanitize=true
-[book-open-variant]: style/icons/book-open-variant.svg?sanitize=true
-[book-plus]: style/icons/bookshelf.svg?book-plus=true
-[palette]: style/icons/palette.svg?sanitize=true
-[refresh]: style/icons/refresh.svg?sanitize=true
-[add-citation]: docs/images/add-citation.gif
-[add-bibliography]: docs/images/add-bibliography.gif
-[change-style]: docs/images/change-style.gif
+[bookshelf]: https://raw.githubusercontent.com/krassowski/jupyterlab-citation-manager/main/style/icons/bookshelf.svg?sanitize=true
+[book-open-variant]: https://raw.githubusercontent.com/krassowski/jupyterlab-citation-manager/main/style/icons/book-open-variant.svg?sanitize=true
+[book-plus]: https://raw.githubusercontent.com/krassowski/jupyterlab-citation-manager/main/style/icons/bookshelf.svg?book-plus=true
+[palette]: https://raw.githubusercontent.com/krassowski/jupyterlab-citation-manager/main/style/icons/palette.svg?sanitize=true
+[refresh]: https://raw.githubusercontent.com/krassowski/jupyterlab-citation-manager/main/style/icons/refresh.svg?sanitize=true
+[add-citation]: https://raw.githubusercontent.com/krassowski/jupyterlab-citation-manager/main/docs/images/add-citation.gif
+[add-bibliography]: https://raw.githubusercontent.com/krassowski/jupyterlab-citation-manager/main/docs/images/add-bibliography.gif
+[change-style]: https://raw.githubusercontent.com/krassowski/jupyterlab-citation-manager/main/docs/images/change-style.gif
 
 ## Requirements
 
