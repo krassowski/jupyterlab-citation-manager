@@ -34,18 +34,20 @@ The most basic, read-only key is sufficient (and recommended). The key will be s
 Insert citation by clicking on the insert citation button in the toolbar of your notebook (![add citation icon][book-plus]) or pressing <kbd>Alt</kbd> + <kbd>C</kbd> (hint: shortcut are customizable in Advanced Settings Editor).
 Start typing to filter references by title, authors or year.
 
-TODO GIF
+![animation of inserting citations][add-citation]
 
 ### Insert bibliography
 
 Insert bibliography by clicking on the (![add bibliography icon][book-open-variant]) or pressing <kbd>Alt</kbd> + <kbd>B</kbd>.
 
-TODO GIF
+![animation of inserting bibliography][add-bibliography]
 
 ### Change style
 
 To change the citation style go to the sidebar (![sidebar icon][bookshelf]) and click on (![change style icon][palette]) or press <kbd>Alt</kbd> + <kbd>S</kbd>.
 Only a subset of generic styles will be shown initially; start typing a name to find more specialised styles.
+
+![animation of changing style][change-style]
 
 ### Synchronise references
 
@@ -68,6 +70,9 @@ and enable a quick preview of citation context and navigation to the relevant pl
 [book-plus]: style/icons/bookshelf.svg?book-plus=true
 [palette]: style/icons/palette.svg?sanitize=true
 [refresh]: style/icons/refresh.svg?sanitize=true
+[add-citation]: docs/images/add-citation.gif
+[add-bibliography]: docs/images/add-bibliography.gif
+[change-style]: docs/images/change-style.gif
 
 ## Requirements
 
