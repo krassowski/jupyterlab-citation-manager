@@ -4,6 +4,8 @@
 [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/krassowski/jupyterlab-citation-manager/main?urlpath=lab)
 
 **Status: Work In Progress**. The underlying format may change; the support for migration from cite2c is provisional.
+Use in production deployments is not currently recommended - only install this extension if you plan to give
+feedback on the features and development directions.
 
 Citation Manager for JupyterLab:
 - enables adding citations to Jupyter notebooks in Markdown cells,
@@ -18,7 +20,7 @@ while a mapping between citation ID and the citable items is stored in the cell 
 - storing full data of each citable item in the notebook enables:
     - collaboration between multiple users with separate Zotero collections,
     - retaining the data for citation which got removed from private collection.
-- storing mapping between citation id and citable items in the cell metadata allows to copy cells between notebooks.
+- storing mapping between citation and citable items in the cell metadata allows to copy cells between notebooks.
 
 ## Usage
 
@@ -89,10 +91,6 @@ pip uninstall jupyterlab-citation-manager
 
 
 ## Advanced Usage
-
-### Add citations manually using `<cite>` tag
-
-TODO
 
 ### Citation clusters
 
@@ -208,7 +206,7 @@ git submodule set-branch --branch v1.0.1 csl-styles
 git commit csl-styles
 ```
 
-### Legal stuff
+### Legal notes
 
 #### Connector for Zotero
 
