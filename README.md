@@ -104,8 +104,8 @@ TODO
 ### Citation styles
 
 This extension includes thousands citation styles form the
-[official repository](https://github.com/citation-style-language/styles) of
-[Citation Language Styles](https://citationstyles.org/) (CSL) project.
+[official repository][csl-repository] of
+[Citation Language Styles][csl] (CSL) project.
 
 If you want to add a custom citation style, you can do so by placing a `.csl` file in `csl-styles` folder in one of the `data` locations as returned by:
 
@@ -220,7 +220,13 @@ our extension (Connector for Zotero) is not affiliated with the Corporation in a
 
 #### CSL styles
 
-The CSL styles are contributed by individual authors to the CSL project; this extension
+The CSL styles are contributed by individual authors to the [CSL project][csl];
+all the styles distributed with this extension come from the [Citation Language Styles][csl-repository]
+and are released under the [Creative Commons Attribution-ShareAlike 3.0 Unported license][cc-by-sa-3.0].
+
+[csl]: https://citationstyles.org/
+[cls-repository]: https://github.com/citation-style-language/styles
+[cc-by-sa-3.0]: https://creativecommons.org/licenses/by-sa/3.0/
 
 #### Icons
 
