@@ -477,10 +477,11 @@ class UnifiedCitationManager implements ICitationManager {
             source,
             Object.fromEntries(
               [...items.values()].sort().map(id => {
-                return [
-                  id,
-                  this.retrieveItem(itemIdToPrimitive({ source, id: id }))
-                ];
+                const item = this.retrieveItem(
+                  itemIdToPrimitive({ source, id: id })
+                );
+                item.id = id;
+                return [id, item];
               })
             )
           ];
