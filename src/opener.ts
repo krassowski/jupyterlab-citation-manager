@@ -13,7 +13,7 @@ import { ITranslator } from '@jupyterlab/translation';
 import { IFrame, MainAreaWidget, WidgetTracker } from '@jupyterlab/apputils';
 import { CommandIDs } from './types';
 import { URLExt } from '@jupyterlab/coreutils';
-import {fileIcon} from "@jupyterlab/ui-components";
+import { fileIcon } from '@jupyterlab/ui-components';
 
 const PLUGIN_ID = 'jupyterlab-citation-manager:opener';
 

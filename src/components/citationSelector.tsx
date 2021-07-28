@@ -6,7 +6,7 @@ import { anonymousMark, IOption, ModalSelector } from './selector';
 import { TranslationBundle } from '@jupyterlab/translation';
 import { NameVariable } from '../_csl_data';
 import { InfinityIfMissing } from '../utils';
-import {UUID} from "@lumino/coreutils";
+import { UUID } from '@lumino/coreutils';
 
 export const CITATION_SELECTOR_CLASS = 'cm-CitationSelector';
 
