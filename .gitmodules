@@ -1,5 +1,5 @@
 [submodule "csl-styles"]
 	path = csl-styles
-	url = git@github.com:citation-style-language/styles.git
+	url = https://github.com/citation-style-language/styles.git
 	branch = v1.0.1
 	shallow = true
