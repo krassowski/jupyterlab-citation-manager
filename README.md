@@ -67,7 +67,7 @@ and enable a quick preview of citation context and navigation to the relevant pl
 
 [bookshelf]: https://raw.githubusercontent.com/krassowski/jupyterlab-citation-manager/main/style/icons/bookshelf.svg?sanitize=true
 [book-open-variant]: https://raw.githubusercontent.com/krassowski/jupyterlab-citation-manager/main/style/icons/book-open-variant.svg?sanitize=true
-[book-plus]: https://raw.githubusercontent.com/krassowski/jupyterlab-citation-manager/main/style/icons/bookshelf.svg?book-plus=true
+[book-plus]: https://raw.githubusercontent.com/krassowski/jupyterlab-citation-manager/main/style/icons/book-plus.svg?sanitize=true
 [palette]: https://raw.githubusercontent.com/krassowski/jupyterlab-citation-manager/main/style/icons/palette.svg?sanitize=true
 [refresh]: https://raw.githubusercontent.com/krassowski/jupyterlab-citation-manager/main/style/icons/refresh.svg?sanitize=true
 [add-citation]: https://raw.githubusercontent.com/krassowski/jupyterlab-citation-manager/main/docs/images/add-citation.gif
@@ -229,7 +229,7 @@ for information on the licences of icons included in the distribution;
 
 ### citeproc-js
 
-`citeproc-js` is used by `jupyterlab-citation-manager` to format the citation and bibliography text; `citeproc-js` is
+`jupyterlab-citation-manager` uses `citeproc-js` to format citations and bibliography text; `citeproc-js` is
 dual-licenced under CPAL 1.0 (or newer) or AGPLv3 (or newer); in order to allow for the distribution of this extension
 with other works the CPAL 1.0 licence was adopted for re-distribution of `cireproc-js` together with this extension.
 The Exhibit A of `citeproc-js` CPAL 1.0 licence is presented below for informational purposes:
