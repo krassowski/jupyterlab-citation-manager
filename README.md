@@ -51,7 +51,7 @@ Only a subset of generic styles will be shown initially; start typing a name to 
 
 ### Synchronise references
 
-To synchronise your collection of references go to the sidebar (![sidebar icon][bookshelf]) and click on (![refresh collection icon][refresh]) or press TODO.
+To synchronise your collection of references go to the sidebar (![sidebar icon][bookshelf]) and click on (![refresh collection icon][refresh]) or press <kbd>Alt</kbd> + <kbd>U</kbd>.
 Updating can take a few seconds; a progress bar will appear on the status bar to keep you updated (if you have it enabled).
 
 ### Explore your collection
@@ -225,7 +225,7 @@ all the styles distributed with this extension come from the [Citation Language 
 and are released under the [Creative Commons Attribution-ShareAlike 3.0 Unported license][cc-by-sa-3.0].
 
 [csl]: https://citationstyles.org/
-[cls-repository]: https://github.com/citation-style-language/styles
+[csl-repository]: https://github.com/citation-style-language/styles
 [cc-by-sa-3.0]: https://creativecommons.org/licenses/by-sa/3.0/
 
 #### Icons

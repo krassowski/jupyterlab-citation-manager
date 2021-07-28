@@ -14,6 +14,11 @@
       "command": "cm:change-bibliography-style",
       "keys": ["Alt S"],
       "selector": ".jp-Notebook"
+    },
+    {
+      "command": "cm:update-references",
+      "keys": ["Alt U"],
+      "selector": ".jp-Notebook"
     }
   ],
   "jupyter.lab.setting-icon": "citation:bibliography",
