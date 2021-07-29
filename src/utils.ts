@@ -8,7 +8,7 @@ import {
 import marked from 'marked';
 import { DateContentModel } from './_csl_citation';
 
-export function InfinityIfMissing(value?: number) {
+export function InfinityIfMissing(value?: number): number {
   // eslint-disable-next-line eqeqeq
   if (value == null) {
     return Infinity;

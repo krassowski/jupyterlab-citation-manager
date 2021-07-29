@@ -26,7 +26,8 @@ import {
   IProgress,
   CiteProc,
   IUnambiguousItemIdentifier,
-  ICitableItemRecordsBySource
+  ICitableItemRecordsBySource,
+  IAlternativeFormat
 } from './types';
 import { zoteroPlugin } from './zotero';
 import { DefaultMap, harmonizeData, simpleRequest } from './utils';
@@ -39,7 +40,12 @@ import {
   TranslationBundle
 } from '@jupyterlab/translation';
 import { NotebookAdapter, NotebookButtons } from './adapters/notebook';
-import { ICommandPalette } from '@jupyterlab/apputils';
+import {
+  Dialog,
+  ICommandPalette,
+  showDialog,
+  showErrorMessage
+} from '@jupyterlab/apputils';
 import { fetchAPI, requestAPI } from './handler';
 import { StyleSelector } from './components/styleSelector';
 import {
@@ -56,6 +62,7 @@ import { Signal } from '@lumino/signaling';
 import { URLExt } from '@jupyterlab/coreutils';
 import { refreshIcon } from '@jupyterlab/ui-components';
 import OutputMode = CiteProc.OutputMode;
+import { cite2cPlugin } from './formats/cite2c';
 
 const PLUGIN_ID = 'jupyterlab-citation-manager:plugin';
 
@@ -121,6 +128,7 @@ class UnifiedCitationManager implements ICitationManager {
   private localeCache: Map<string, string>;
   protected defaultStyleID = 'apa.csl';
   protected allReady: ICancellablePromise<any>;
+  protected formats: IAlternativeFormat<any>[];
 
   progress: Signal<UnifiedCitationManager, IProgress>;
   private currentAdapter: IDocumentAdapter<any> | null = null;
@@ -167,6 +175,7 @@ class UnifiedCitationManager implements ICitationManager {
     this.progress = new Signal(this);
     this.styles = new StylesManager(trans, this);
     this.selector = new CitationSelector(trans);
+    this.formats = [];
     this.selector.hide();
     this.adapters = new WeakMap();
     this.processors = new WeakMap();
@@ -184,13 +193,7 @@ class UnifiedCitationManager implements ICitationManager {
       });
 
       panel.context.ready.then(() => {
-        const adapter = this.getAdapter(panel);
-        adapter.migrateFormat().then(async migrated => {
-          if (migrated) {
-            console.log('Migrated citations, will refresh now...');
-            await this.processFromScratch(panel);
-          }
-        });
+        this.offerMigration(panel).catch(console.warn);
       });
 
       panel.context.saveState.connect((sender, state) => {
@@ -216,6 +219,70 @@ class UnifiedCitationManager implements ICitationManager {
     // at this point this promise is not very useful as it has not
     // providers registered; more happens during provider registration
     this.allReady = this.createAllReadyPromiseWrapper();
+  }
+
+  registerFormat(format: IAlternativeFormat<any>) {
+    this.formats.push(format);
+    console.log(`${format.name} registered`);
+    if (this.notebookTracker.currentWidget) {
+      this.offerMigration(this.notebookTracker.currentWidget).catch(
+        console.warn
+      );
+    }
+    // TODO: run detection
+  }
+
+  async offerMigration(panel: NotebookPanel) {
+    const adapter = this.getAdapter(panel);
+    for (const format of this.formats) {
+      const detectionResult = format.detect(panel, adapter);
+      if (
+        detectionResult.citationsDetected !== 0 ||
+        detectionResult.bibliographiesDetected !== 0
+      ) {
+        const migrateButton = Dialog.okButton({
+          label: this.trans.__('Migrate')
+        });
+        const decision = await showDialog({
+          title: this.trans.__(
+            'Importing %1 citations is possible',
+            format.name
+          ),
+          body: this.trans.__(
+            'Detected %1 citation in %2 format. Would you like to migrate these citations to Citation Manager format?',
+            detectionResult.citationsDetected,
+            format.name
+          ),
+          buttons: [Dialog.cancelButton(), migrateButton],
+          defaultButton: 1
+        });
+        if (decision.button === migrateButton) {
+          const result = format.migrateFrom(panel, adapter);
+          if (result.aborted) {
+            await showErrorMessage(
+              this.trans.__('Migration from %1 failed', format.name),
+              result.message
+            );
+          }
+          if (result.failures.length !== 0) {
+            await showErrorMessage(
+              this.trans.__('Migration from %1 was not complete', format.name),
+              this.trans.__(
+                'There were %1 failures: ',
+                result.failures.length
+              ) +
+                JSON.stringify(result.failures) +
+                '\n\n' +
+                result.message
+            );
+          }
+          console.log(
+            `${result.migratedCitationsCount} citations migrated from ${format.name}`
+          );
+          await this.processFromScratch(panel);
+        }
+      }
+    }
   }
 
   async previewStyle(
@@ -891,6 +958,7 @@ const managerPlugin: JupyterFrontEndPlugin<ICitationManager> = {
 const plugins: JupyterFrontEndPlugin<any>[] = [
   managerPlugin,
   zoteroPlugin,
+  cite2cPlugin,
   openerPlugin
 ];
 

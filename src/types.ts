@@ -1,6 +1,6 @@
 import { CslData } from './_csl_data';
 import { ReadonlyPartialJSONObject, Token } from '@lumino/coreutils';
-import { DocumentWidget } from '@jupyterlab/docregistry';
+import { IDocumentWidget } from '@jupyterlab/docregistry';
 import { LabIcon } from '@jupyterlab/ui-components';
 import IIcon = LabIcon.IIcon;
 import { ISignal } from '@lumino/signaling';
@@ -247,17 +247,33 @@ export interface IReferenceProvider {
 
 export type CitationQuerySubset = 'all' | 'before-cursor' | 'after-cursor';
 
-export interface IDocumentAdapter<T extends DocumentWidget> {
+export interface IDetectionResult {
+  citationsDetected: number;
+  bibliographiesDetected: number;
+}
+
+export interface IMigrationResult {
+  aborted: boolean;
+  failures: string[];
+  message?: string;
+  migratedCitationsCount: number;
+  bibliographyMigrated: boolean;
+}
+
+export interface IAlternativeFormat<T extends IDocumentWidget> {
+  name: string;
+  migrateFrom(document: T, adapter: IDocumentAdapter<T>): IMigrationResult;
+  detect(document: T, adapter: IDocumentAdapter<T>): IDetectionResult;
+  // TODO: allow saving notebooks using alternative formats
+  // migrateTo?(): IMigrationResult;
+}
+
+export interface IDocumentAdapter<T extends IDocumentWidget> {
   /**
    * Insert citation at current position.
    */
   citations: ICitation[];
   document: T;
-
-  /**
-   * Perform migration from legacy format.
-   */
-  migrateFormat(): Promise<boolean>;
 
   /**
    * Use getter to read it from metadata, and setter to set it to metadata.
@@ -272,6 +288,9 @@ export interface IDocumentAdapter<T extends DocumentWidget> {
   updateBibliography(bibliography: string): void;
 
   findCitations(subset: CitationQuerySubset): ICitation[];
+
+  formatCitation(citation: CitationInsertData): string;
+  formatBibliography(bibliography: string): string;
 
   /**
    * Document adapter is not a provider of citable items,
@@ -302,10 +321,12 @@ export interface ICitationManager
   extends CiteProc.ISystem,
     IStylePreviewProvider {
   registerReferenceProvider(provider: IReferenceProvider): void;
-  addCitation(documentWidget: DocumentWidget): void;
-  addBibliography(documentWidget: DocumentWidget): void;
-  changeStyle(documentWidget: DocumentWidget): void;
+  addCitation(documentWidget: IDocumentWidget): void;
+  addBibliography(documentWidget: IDocumentWidget): void;
+  changeStyle(documentWidget: IDocumentWidget): void;
   updateReferences(): Promise<any>;
+
+  registerFormat(format: IAlternativeFormat<any>): void;
 }
 
 export const ICitationManager = new Token<ICitationManager>(

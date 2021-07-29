@@ -2,7 +2,6 @@ import {
   CitationInsertData,
   CitationQuerySubset,
   CommandIDs,
-  ICitableItemRecords,
   ICitableItemRecordsBySource,
   ICitation,
   ICitationManager,
@@ -18,13 +17,7 @@ import { JupyterFrontEnd } from '@jupyterlab/application';
 import { ReadonlyPartialJSONObject } from '@lumino/coreutils';
 import ICellMetadata = NotebookAdapter.ICellMetadata;
 
-namespace Cite2C {
-  export interface INotebookMetadata extends ReadonlyPartialJSONObject {
-    citations: ICitableItemRecords;
-  }
-}
-
-namespace NotebookAdapter {
+export namespace NotebookAdapter {
   export interface INotebookMetadata extends ReadonlyPartialJSONObject {
     /**
      * The identifier (path with .csl extension) of a CSL citation style.
@@ -74,9 +67,7 @@ export class NotebookAdapter implements IDocumentAdapter<NotebookPanel> {
     }
   }
 
-  protected get notebookMetadata():
-    | NotebookAdapter.INotebookMetadata
-    | undefined {
+  get notebookMetadata(): NotebookAdapter.INotebookMetadata | undefined {
     if (!this.document.model) {
       return;
     }
@@ -85,7 +76,7 @@ export class NotebookAdapter implements IDocumentAdapter<NotebookPanel> {
     ) as NotebookAdapter.INotebookMetadata;
   }
 
-  protected setNotebookMetadata(
+  setNotebookMetadata(
     update: Partial<NotebookAdapter.INotebookMetadata>
   ): void {
     if (!this.document.model) {
@@ -126,11 +117,11 @@ export class NotebookAdapter implements IDocumentAdapter<NotebookPanel> {
     this.insertAtCursor(this.formatBibliography(bibliography));
   }
 
-  protected formatBibliography(bibliography: string): string {
+  formatBibliography(bibliography: string): string {
     return `<!-- BIBLIOGRAPHY START -->${bibliography}<!-- BIBLIOGRAPHY END -->`;
   }
 
-  protected formatCitation(citation: CitationInsertData): string {
+  formatCitation(citation: CitationInsertData): string {
     return `<cite id="${citation.citationId}">${citation.text}</cite>`;
   }
 
@@ -218,123 +209,6 @@ export class NotebookAdapter implements IDocumentAdapter<NotebookPanel> {
     }
   }
 
-  async migrateFormat(): Promise<boolean> {
-    if (!this.document.model) {
-      return false;
-    }
-    const cite2c = this.document.model.metadata.get(
-      'cite2c'
-    ) as Cite2C.INotebookMetadata;
-    if (!cite2c) {
-      return false;
-    }
-    if (!cite2c.citations) {
-      console.log('cite2c metadata detected, but no citations to convert');
-      return false;
-    }
-    let allGood = true;
-    console.log('Converting cite2c citations');
-
-    const citationToItems: ICitationMap = Object.fromEntries(
-      Object.keys(cite2c.citations).map(
-        // TODO: if a matching item exists in zotero -> re-conciliate
-        citationID => {
-          return [
-            citationID,
-            [
-              {
-                id: citationID,
-                source: 'cite2c'
-              }
-            ]
-          ];
-        }
-      )
-    );
-
-    this.chooseCells('all').forEach(cell => {
-      const citationsInCell = extractCitations(
-        cell.model.value.text,
-        {
-          host: cell.node
-        },
-        citationToItems
-      )
-        .filter(citation => {
-          if (!citation?.data?.cite) {
-            allGood = false;
-            console.log(
-              'Skipping potential cite2c citation:',
-              citation,
-              '- no data-cite detected.'
-            );
-            return false;
-          }
-          return true;
-        })
-        .map(cite2cCitation => {
-          cite2cCitation.citationId = 'cite2c-' + cite2cCitation?.data?.cite;
-          return cite2cCitation;
-        });
-      let text = cell.model.value.text;
-      for (const citation of citationsInCell) {
-        const pattern = new RegExp(
-          `<cite data-cite=["']${citation?.data?.cite}["'](?:\\/>|><\\/cite>)`,
-          'g'
-        );
-        const matchesCount = (text.match(pattern) || []).length;
-        if (matchesCount === 0) {
-          allGood = false;
-          console.error(
-            `Could not migrate cite2c citation: ${citation}: ${pattern} has no matches`
-          );
-        }
-        text = text.replace(pattern, this.formatCitation(citation));
-        const matchesAfterCount = (text.match(pattern) || []).length;
-        if (matchesAfterCount !== 0) {
-          allGood = false;
-          console.error(
-            `Could not migrate cite2c citation: ${citation}: ${pattern} some matches remained`
-          );
-        }
-      }
-      text = text.replace(
-        /<div class=["']cite2c-biblio["']><\/div>/,
-        this.formatBibliography('')
-      );
-      cell.model.value.text = text;
-      let metadata: ICellMetadata = cell.model.metadata.get(
-        cellMetadataKey
-      ) as ICellMetadata;
-      if (!metadata) {
-        metadata = { citations: {} };
-      }
-      for (const citation of citationsInCell) {
-        metadata['citations'][citation.citationId] = citation.items;
-      }
-      cell.model.metadata.set(cellMetadataKey, metadata);
-    });
-
-    const itemsBySource = this.notebookMetadata
-      ? this.notebookMetadata.items
-      : {};
-    itemsBySource['cite2c'] = {
-      ...(itemsBySource['cite2c'] || {}),
-      ...cite2c.citations
-    };
-
-    this.setNotebookMetadata({
-      items: itemsBySource
-    });
-
-    if (allGood) {
-      this.document.model.metadata.delete('cite2c');
-    } else {
-      console.warn('Could not fully migrate from cite2c');
-    }
-    return true;
-  }
-
   private *iterateCitationsByCell(subset: CitationQuerySubset) {
     // TODO only convert once at open
 
@@ -364,7 +238,7 @@ export class NotebookAdapter implements IDocumentAdapter<NotebookPanel> {
     return citations;
   }
 
-  protected updateCellMetadata() {
+  protected updateCellMetadata(): void {
     for (const { cell, cellCitations } of this.iterateCitationsByCell('all')) {
       if (cellCitations.length === 0) {
         cell.model.metadata.delete(cellMetadataKey);
