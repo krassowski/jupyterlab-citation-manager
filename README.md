@@ -66,12 +66,12 @@ and enable a quick preview of citation context and navigation to the relevant pl
 
 ### Auto-migrate existing citations
 
-When opening a notebook with citations in one of the following formats:
+When opening a notebook, the extension will automatically detect citations in the following formats:
 - cite2c, e.g. `<cite data-cite="itemID"></cite>` with associated notebook-level metadata,
 - DOI-links, e.g. `[(Krassowski et al, 2021)](https://doi.org/10.3389/fcell.2021.626821)` (parentheses are required)
 
-the extension will automatically detect those and ask you for permission to convert those to our format.
-Only citations inside of markdown cells will be converted.
+and ask for your permission to migrate them to Citation Manager format.
+Only citations inside of markdown cells will be detected.
 
 The migrated citations are be stored separately from the citations from other providers (such as Zotero),
 but support for reconciliation is planned soon. Initially we will only re-use existing items in your collection
