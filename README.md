@@ -91,7 +91,7 @@ but support for reconciliation is planned soon. Initially we will only re-use ex
 
 ## Requirements
 
-* JupyterLab >= 3.0
+* JupyterLab >= 3.1
 * Modern browser (with ES 2019 support, e.g. Firefox 64+, or Chrome 73+)
 * [Zotero account](https://www.zotero.org/user/register)
 
