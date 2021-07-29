@@ -77,6 +77,8 @@ and enable a quick preview of citation context and navigation to the relevant pl
 ## Requirements
 
 * JupyterLab >= 3.0
+* Modern browser (with ES 2019 support, e.g. Firefox 64+, or Chrome 73+)
+* [Zotero account](https://www.zotero.org/user/register)
 
 ## Install
 
@@ -230,8 +232,8 @@ and are released under the [Creative Commons Attribution-ShareAlike 3.0 Unported
 
 #### Icons
 
-Please see the [`style/icons/README.md`](style/icons/README.md)
-for information on the licences of icons included in the distribution;
+Please see the [`style/icons/README.md`](https://github.com/krassowski/jupyterlab-citation-manager/blob/main/style/icons/README.md)
+for information on the creators and licences of icons included in the distribution.
 
 ### citeproc-js
 

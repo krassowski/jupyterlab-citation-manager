@@ -223,13 +223,12 @@ class UnifiedCitationManager implements ICitationManager {
 
   registerFormat(format: IAlternativeFormat<any>) {
     this.formats.push(format);
-    console.log(`${format.name} registered`);
+    console.log(`${format.name} format registered`);
     if (this.notebookTracker.currentWidget) {
       this.offerMigration(this.notebookTracker.currentWidget).catch(
         console.warn
       );
     }
-    // TODO: run detection
   }
 
   async offerMigration(panel: NotebookPanel) {
