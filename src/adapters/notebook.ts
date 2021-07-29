@@ -2,13 +2,14 @@ import {
   CitationInsertData,
   CitationQuerySubset,
   CommandIDs,
+  ICitableItemRecords,
   ICitableItemRecordsBySource,
   ICitation,
   ICitationManager,
   ICitationMap,
   IDocumentAdapter
 } from '../types';
-import { INotebookModel, NotebookPanel } from '@jupyterlab/notebook';
+import type { INotebookModel, NotebookPanel } from '@jupyterlab/notebook';
 import { DocumentRegistry } from '@jupyterlab/docregistry';
 import { DisposableDelegate, IDisposable } from '@lumino/disposable';
 import { CommandToolbarButton } from '@jupyterlab/apputils';
@@ -16,6 +17,7 @@ import { extractCitations } from '../utils';
 import { JupyterFrontEnd } from '@jupyterlab/application';
 import { ReadonlyPartialJSONObject } from '@lumino/coreutils';
 import ICellMetadata = NotebookAdapter.ICellMetadata;
+import type { Cell } from '@jupyterlab/cells';
 
 export namespace NotebookAdapter {
   export interface INotebookMetadata extends ReadonlyPartialJSONObject {
@@ -67,7 +69,9 @@ export class NotebookAdapter implements IDocumentAdapter<NotebookPanel> {
     }
   }
 
-  get notebookMetadata(): NotebookAdapter.INotebookMetadata | undefined {
+  protected get notebookMetadata():
+    | NotebookAdapter.INotebookMetadata
+    | undefined {
     if (!this.document.model) {
       return;
     }
@@ -76,7 +80,21 @@ export class NotebookAdapter implements IDocumentAdapter<NotebookPanel> {
     ) as NotebookAdapter.INotebookMetadata;
   }
 
-  setNotebookMetadata(
+  addFallbackDataFor(source: string, records: ICitableItemRecords): void {
+    const itemsBySource = this.notebookMetadata
+      ? this.notebookMetadata.items
+      : {};
+    itemsBySource[source] = {
+      ...(itemsBySource[source] || {}),
+      ...records
+    };
+
+    this.setNotebookMetadata({
+      items: itemsBySource
+    });
+  }
+
+  protected setNotebookMetadata(
     update: Partial<NotebookAdapter.INotebookMetadata>
   ): void {
     if (!this.document.model) {
@@ -262,6 +280,19 @@ export class NotebookAdapter implements IDocumentAdapter<NotebookPanel> {
     return this.document.content.widgets
       .slice(min, max)
       .filter(cell => cell.model.type === 'markdown');
+  }
+
+  addCitationMetadata(cell: Cell, citationsInCell: ICitation[]) {
+    let metadata: ICellMetadata = cell.model.metadata.get(
+      cellMetadataKey
+    ) as ICellMetadata;
+    if (!metadata) {
+      metadata = { citations: {} };
+    }
+    for (const citation of citationsInCell) {
+      metadata['citations'][citation.citationId] = citation.items;
+    }
+    cell.model.metadata.set(cellMetadataKey, metadata);
   }
 }
 

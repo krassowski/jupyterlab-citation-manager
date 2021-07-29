@@ -30,7 +30,12 @@ import {
   IAlternativeFormat
 } from './types';
 import { zoteroPlugin } from './zotero';
-import { DefaultMap, harmonizeData, simpleRequest } from './utils';
+import {
+  DefaultMap,
+  generateRandomID,
+  harmonizeData,
+  simpleRequest
+} from './utils';
 
 import * as CSL from 'citeproc';
 import { CitationSelector } from './components/citationSelector';
@@ -63,6 +68,7 @@ import { URLExt } from '@jupyterlab/coreutils';
 import { refreshIcon } from '@jupyterlab/ui-components';
 import OutputMode = CiteProc.OutputMode;
 import { cite2cPlugin } from './formats/cite2c';
+import { markdownDOIPlugin } from './formats/markdownDOI';
 
 const PLUGIN_ID = 'jupyterlab-citation-manager:plugin';
 
@@ -256,7 +262,7 @@ class UnifiedCitationManager implements ICitationManager {
           defaultButton: 1
         });
         if (decision.button === migrateButton) {
-          const result = format.migrateFrom(panel, adapter);
+          const result = await format.migrateFrom(panel, adapter);
           if (result.aborted) {
             await showErrorMessage(
               this.trans.__('Migration from %1 failed', format.name),
@@ -495,16 +501,6 @@ class UnifiedCitationManager implements ICitationManager {
     return options;
   }
 
-  private _generateRandomID(existingIDs: Set<string>): string {
-    let isUnique = false;
-    let id = '';
-    while (!isUnique) {
-      id = Math.random().toString(36).slice(-5);
-      isUnique = !existingIDs.has(id);
-    }
-    return id;
-  }
-
   private getAdapter(content: NotebookPanel): IDocumentAdapter<any> {
     let adapter = this.adapters.get(content);
     if (!adapter) {
@@ -593,7 +589,7 @@ class UnifiedCitationManager implements ICitationManager {
           ...citationsAfter.map(c => c.citationId)
         ]);
 
-        const newCitationID = this._generateRandomID(existingCitationIDs);
+        const newCitationID = generateRandomID(existingCitationIDs);
 
         const citationsBeforeMap: Record<number, ICitation> =
           Object.fromEntries(citationsBefore.map((c, index) => [index, c]));
@@ -958,6 +954,7 @@ const plugins: JupyterFrontEndPlugin<any>[] = [
   managerPlugin,
   zoteroPlugin,
   cite2cPlugin,
+  markdownDOIPlugin,
   openerPlugin
 ];
 

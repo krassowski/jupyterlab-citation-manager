@@ -16,11 +16,10 @@ import {
   nullTranslator,
   TranslationBundle
 } from '@jupyterlab/translation';
-import { cellMetadataKey, NotebookAdapter } from '../adapters/notebook';
-import { extractCitations } from '../utils';
+import { NotebookAdapter } from '../adapters/notebook';
+import { extractCitations, markdownCells } from '../utils';
 import { ReadonlyPartialJSONObject } from '@lumino/coreutils';
 import { NotebookPanel } from '@jupyterlab/notebook';
-import ICellMetadata = NotebookAdapter.ICellMetadata;
 
 const PLUGIN_ID = 'jupyterlab-citation-manager:format:cite2c';
 
@@ -34,14 +33,9 @@ class Cite2CFormat implements IAlternativeFormat<NotebookPanel> {
   name = 'cite2c';
   private readonly bibliographyPattern =
     /<div class=["']cite2c-biblio["']><\/div>/;
+  private readonly catchAllPattern: RegExp;
   constructor(protected trans: TranslationBundle) {
-    // no-op
-  }
-
-  private markdownCells(document: NotebookPanel) {
-    return document.content.widgets.filter(
-      cell => cell.model.type === 'markdown'
-    );
+    this.catchAllPattern = this.citationSearchPattern('.*?');
   }
 
   detect(
@@ -49,31 +43,23 @@ class Cite2CFormat implements IAlternativeFormat<NotebookPanel> {
     adapter: IDocumentAdapter<any>
   ): IDetectionResult {
     const metadata = this.metadata(document);
-    if (!metadata) {
-      return {
-        citationsDetected: 0,
-        bibliographiesDetected: 0
-      };
-    }
-    const catchAllPattern = this.citationSearchPattern('.*?');
-    const matchesInCells = this.markdownCells(document).map(cell => {
-      const text = cell.model.value.text;
-      const citationMatches = text.match(catchAllPattern);
-      const bibliographyMatches = text.match(this.bibliographyPattern);
-      return {
-        citations: citationMatches ? citationMatches.length : 0,
-        bibliography: bibliographyMatches ? bibliographyMatches.length : 0
-      };
-    });
-    const citations = matchesInCells.reduce((a, b) => a + b.citations, 0);
-    const bibliographies = matchesInCells.reduce(
-      (a, b) => a + b.bibliography,
-      0
-    );
-    return {
-      citationsDetected: citations,
-      bibliographiesDetected: bibliographies
+    const result = {
+      citationsDetected: 0,
+      bibliographiesDetected: 0
     };
+    if (!metadata) {
+      return result;
+    }
+    markdownCells(document).map(cell => {
+      const text = cell.model.value.text;
+      const citationMatches = text.match(this.catchAllPattern);
+      const bibliographyMatches = text.match(this.bibliographyPattern);
+      result.citationsDetected += citationMatches ? citationMatches.length : 0;
+      result.bibliographiesDetected += bibliographyMatches
+        ? bibliographyMatches.length
+        : 0;
+    });
+    return result;
   }
 
   protected metadata(document: NotebookPanel): Cite2C.INotebookMetadata | null {
@@ -90,10 +76,10 @@ class Cite2CFormat implements IAlternativeFormat<NotebookPanel> {
     return new RegExp(`<cite data-cite=["']${id}["'](?:\\/>|><\\/cite>)`, 'g');
   }
 
-  migrateFrom(
+  async migrateFrom(
     document: NotebookPanel,
     adapter: NotebookAdapter
-  ): IMigrationResult {
+  ): Promise<IMigrationResult> {
     const cite2c = this.metadata(document);
     const result: IMigrationResult = {
       migratedCitationsCount: 0,
@@ -143,7 +129,7 @@ class Cite2CFormat implements IAlternativeFormat<NotebookPanel> {
       )
     );
 
-    this.markdownCells(document).forEach(cell => {
+    markdownCells(document).forEach(cell => {
       const citationsInCell = extractCitations(
         cell.model.value.text,
         {
@@ -189,43 +175,24 @@ class Cite2CFormat implements IAlternativeFormat<NotebookPanel> {
           result.failures.push(
             this.trans.__(
               'Could not migrate cite2c citation: %1: %2 out of %3 matches migrated',
-              JSON.stringify(citation),
+              JSON.stringify(citationsInCell),
               matchesCount - matchesAfterCount,
               matchesCount
             )
           );
-        } else {
-          result.migratedCitationsCount += matchesCount;
         }
+        result.migratedCitationsCount += matchesCount - matchesAfterCount;
       }
       text = text.replace(
         this.bibliographyPattern,
         adapter.formatBibliography('')
       );
       cell.model.value.text = text;
-      let metadata: ICellMetadata = cell.model.metadata.get(
-        cellMetadataKey
-      ) as ICellMetadata;
-      if (!metadata) {
-        metadata = { citations: {} };
-      }
-      for (const citation of citationsInCell) {
-        metadata['citations'][citation.citationId] = citation.items;
-      }
-      cell.model.metadata.set(cellMetadataKey, metadata);
+
+      adapter.addCitationMetadata(cell, citationsInCell);
     });
 
-    const itemsBySource = adapter.notebookMetadata
-      ? adapter.notebookMetadata.items
-      : {};
-    itemsBySource['cite2c'] = {
-      ...(itemsBySource['cite2c'] || {}),
-      ...cite2c.citations
-    };
-
-    adapter.setNotebookMetadata({
-      items: itemsBySource
-    });
+    adapter.addFallbackDataFor('cite2c', cite2c.citations);
 
     if (result.failures.length === 0) {
       document.model.metadata.delete('cite2c');

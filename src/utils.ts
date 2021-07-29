@@ -7,6 +7,7 @@ import {
 } from './types';
 import marked from 'marked';
 import { DateContentModel } from './_csl_citation';
+import { NotebookPanel } from '@jupyterlab/notebook';
 
 export function InfinityIfMissing(value?: number): number {
   // eslint-disable-next-line eqeqeq
@@ -21,6 +22,17 @@ interface IResponse {
   progress: ProgressEvent;
 }
 
+export function generateRandomID(existingIDs: Set<string>): string {
+  let isUnique = false;
+  let id = '';
+  while (!isUnique) {
+    id = Math.random().toString(36).slice(-5);
+    isUnique = !existingIDs.has(id);
+  }
+  return id;
+}
+
+// TODO: ditch in favour of fetch API?
 export async function simpleRequest(
   url: string,
   method: 'GET' | 'POST' | 'DELETE' = 'GET'
@@ -60,6 +72,12 @@ export class DefaultMap<K extends string | number | boolean, V extends any> {
   values() {
     return this.map.values();
   }
+}
+
+export function markdownCells(document: NotebookPanel) {
+  return document.content.widgets.filter(
+    cell => cell.model.type === 'markdown'
+  );
 }
 
 function extractText(node?: ChildNode | null): string {

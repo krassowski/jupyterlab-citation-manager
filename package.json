@@ -63,6 +63,7 @@
   "devDependencies": {
     "@jupyterlab/apputils": "^3.0.9",
     "@jupyterlab/builder": "^3.0.0",
+    "@jupyterlab/cells": "^3.0.0",
     "@jupyterlab/docregistry": "^3.0.11",
     "@jupyterlab/notebook": "^3.0.11",
     "@jupyterlab/statedb": "^3.0.6",

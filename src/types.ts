@@ -262,10 +262,17 @@ export interface IMigrationResult {
 
 export interface IAlternativeFormat<T extends IDocumentWidget> {
   name: string;
-  migrateFrom(document: T, adapter: IDocumentAdapter<T>): IMigrationResult;
+  migrateFrom(
+    document: T,
+    adapter: IDocumentAdapter<T>
+  ): Promise<IMigrationResult>;
+
+  /**
+   * Detection should use heuristics if possible to return results quickly.
+   */
   detect(document: T, adapter: IDocumentAdapter<T>): IDetectionResult;
   // TODO: allow saving notebooks using alternative formats
-  // migrateTo?(): IMigrationResult;
+  // migrateTo?(): Promise<IMigrationResult>;
 }
 
 export interface IDocumentAdapter<T extends IDocumentWidget> {

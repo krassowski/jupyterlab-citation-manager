@@ -64,6 +64,20 @@ References with citations in the current document will show on top when opening 
 and enable a quick preview of citation context and navigation to the relevant place in the document
 (by clicking on the citation context).
 
+### Auto-migrate existing citations
+
+When opening a notebook with citations in one of the following formats in the markdown cells:
+- cite2c, e.g. `<cite data-cite="itemID"></cite>` with associated notebook-level metadata,
+- DOI-links, e.g. `[(Krassowski et al, 2021)](https://doi.org/10.3389/fcell.2021.626821)` (parentheses are required)
+
+the extension will automatically detect those and ask you for permission to convert those to our format,
+which provides support additional features (such as citation clusters, persistent bibliography, etc.).
+
+Currently the migrated citations will be stored separately from the citations from other providers (such as Zotero),
+but support for reconciliation is planned soon. Initially we will only re-use existing items in your collection
+(based on identical DOI) but the future releases might enable adding items as needed too.
+
+![animation of migrating from cite2c and from DOIs][migrate-gif]
 
 [bookshelf]: https://raw.githubusercontent.com/krassowski/jupyterlab-citation-manager/main/style/icons/bookshelf.svg?sanitize=true
 [book-open-variant]: https://raw.githubusercontent.com/krassowski/jupyterlab-citation-manager/main/style/icons/book-open-variant.svg?sanitize=true
@@ -73,6 +87,7 @@ and enable a quick preview of citation context and navigation to the relevant pl
 [add-citation]: https://raw.githubusercontent.com/krassowski/jupyterlab-citation-manager/main/docs/images/add-citation.gif
 [add-bibliography]: https://raw.githubusercontent.com/krassowski/jupyterlab-citation-manager/main/docs/images/add-bibliography.gif
 [change-style]: https://raw.githubusercontent.com/krassowski/jupyterlab-citation-manager/main/docs/images/change-style.gif
+[migrate-gif]: https://raw.githubusercontent.com/krassowski/jupyterlab-citation-manager/main/docs/images/migrate-cite2c-and-doi.gif
 
 ## Requirements
 
