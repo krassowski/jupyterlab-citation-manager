@@ -31,7 +31,7 @@
     "url": "https://github.com/krassowski/jupyterlab-citation-manager.git"
   },
   "scripts": {
-    "bootstrap": "jlpm run fetch:schema && jlpm run build:schema",
+    "bootstrap": "jlpm && jlpm run fetch:schema && jlpm run build:schema",
     "build": "jlpm run build:lib && jlpm run build:labextension:dev",
     "build:prod": "jlpm run clean && jlpm run bootstrap && jlpm run build:lib && jlpm run build:labextension && rm src/_*.d.ts",
     "build:labextension": "jupyter labextension build .",

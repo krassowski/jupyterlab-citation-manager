@@ -17,5 +17,3 @@ dependencies:
   - nodejs >=14,<15
   - pip
   - wheel
-  # additional packages for demos
-  # - ipywidgets
