@@ -70,6 +70,17 @@ export namespace CiteProc {
   ];
 
   /**
+   * https://github.com/Juris-M/citeproc-js/blob/master/src/formats.js
+   */
+  export type OutputMode =
+    | 'html'
+    | 'text'
+    | 'rtf'
+    | 'asciidoc'
+    | 'fo'
+    | 'latex';
+
+  /**
    * https://citeproc-js.readthedocs.io/en/latest/running.html
    */
   export interface IEngine {
@@ -88,6 +99,8 @@ export namespace CiteProc {
     ): [number, string, CitationID][];
 
     makeBibliography(): Bibliography;
+
+    setOutputFormat(mode: OutputMode): void;
   }
 
   /**

@@ -55,6 +55,7 @@ import { UpdateProgress } from './components/progressbar';
 import { Signal } from '@lumino/signaling';
 import { URLExt } from '@jupyterlab/coreutils';
 import { refreshIcon } from '@jupyterlab/ui-components';
+import OutputMode = CiteProc.OutputMode;
 
 const PLUGIN_ID = 'jupyterlab-citation-manager:plugin';
 
@@ -123,6 +124,7 @@ class UnifiedCitationManager implements ICitationManager {
 
   progress: Signal<UnifiedCitationManager, IProgress>;
   private currentAdapter: IDocumentAdapter<any> | null = null;
+  private outputFormat: CiteProc.OutputMode = 'html';
 
   protected createAllReadyPromiseWrapper(): ICancellablePromise<any> {
     const REASON_CANCELLED = 'cancelled';
@@ -326,6 +328,7 @@ class UnifiedCitationManager implements ICitationManager {
 
   protected updateSettings(settings: ISettingRegistry.ISettings) {
     this.defaultStyleID = settings.get('defaultStyle').composite as string;
+    this.outputFormat = settings.get('outputFormat').composite as OutputMode;
   }
 
   public registerReferenceProvider(provider: IReferenceProvider): void {
@@ -650,6 +653,10 @@ class UnifiedCitationManager implements ICitationManager {
           const styleAsText = result.response.responseText;
           return new CSL.Engine(this, styleAsText);
         });
+      })
+      .then((engine: CiteProc.IEngine) => {
+        engine.setOutputFormat(this.outputFormat);
+        return engine;
       });
   }
 

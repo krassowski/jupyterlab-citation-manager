@@ -32,6 +32,13 @@
       "type": "string",
       "default": "apa.csl",
       "description": "The default citation style, one of the styles in the Citation Style Language (CSL) repository."
+    },
+    "outputFormat": {
+      "title": "Format of citations and bibliography",
+      "type": "string",
+      "default": "html",
+      "description": "One of: html, text, rtf, asciidoc, fo, latex",
+      "enum": ["html", "text", "rtf", "asciidoc", "fo", "latex"]
     }
   },
   "additionalProperties": false
