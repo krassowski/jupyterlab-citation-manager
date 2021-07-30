@@ -180,12 +180,12 @@ export class ReferenceBrowser extends Selector<
                   publication as unknown as ReadonlyPartialJSONObject
                 )
               }
-              tooltip={'Open in JupyterLab'}
+              tooltip={this.trans.__('Open in JupyterLab')}
             />
             <ToolbarButton
               icon={launcherIcon}
               execute={() => window.open('https://doi.org/' + publication.DOI)}
-              tooltip={'Open in new browser window'}
+              tooltip={this.trans.__('Open in new browser window')}
             />
             <ToolbarButton
               icon={buildIcon}
@@ -195,7 +195,7 @@ export class ReferenceBrowser extends Selector<
                   buttons: [Dialog.okButton()]
                 })
               }
-              tooltip={'Show full metadata'}
+              tooltip={this.trans.__('Show full metadata')}
             />
           </div>
           <div

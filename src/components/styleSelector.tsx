@@ -98,6 +98,7 @@ export class StyleSelector extends ModalSelector<
     protected previewProvider: IStylePreviewProvider
   ) {
     super({ model: styleOptionModel });
+    this.placeholder = trans.__('Start typing style name or abbreviation');
     this.addClass('cm-StyleSelector');
     this.previewChanged = new Signal(this);
     this.activeChanged.connect((sender, style) => {

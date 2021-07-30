@@ -928,7 +928,7 @@ const managerPlugin: JupyterFrontEndPlugin<ICitationManager> = {
     try {
       referenceBrowser.id = 'jupyterlab-citation-manager:reference-browser';
       referenceBrowser.title.icon = bookshelfIcon;
-      referenceBrowser.title.caption = 'Reference Browser';
+      referenceBrowser.title.caption = trans.__('Reference Browser');
       referenceBrowser.show();
       // below the git extension but not at the very end
       app.shell.add(referenceBrowser, 'left', { rank: 850 });
