@@ -65,7 +65,12 @@ export class NotebookAdapter implements IDocumentAdapter<NotebookPanel> {
     if (activeCell) {
       const cursor = activeCell.editor.getCursorPosition();
       const offset = activeCell.editor.getOffsetAt(cursor);
+      const editor = activeCell.editor;
       activeCell.model.value.insert(offset, text);
+      const updatedPosition = editor.getPositionAt(offset + text.length);
+      if (updatedPosition) {
+        editor.setCursorPosition(updatedPosition);
+      }
     }
   }
 
