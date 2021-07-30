@@ -1,12 +1,15 @@
 {
   "name": "jupyterlab-citation-manager",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Citation Manager for JupyterLab with Zotero integration",
   "keywords": [
     "jupyter",
     "jupyterlab",
     "jupyterlab-extension",
     "citation",
+    "references",
+    "csl",
+    "citeproc",
     "zotero"
   ],
   "homepage": "https://github.com/krassowski/jupyterlab-citation-manager",
