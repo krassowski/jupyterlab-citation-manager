@@ -2,6 +2,7 @@
 
 [![Github Actions Status](https://github.com/krassowski/jupyterlab-citation-manager/workflows/Build/badge.svg)](https://github.com/krassowski/jupyterlab-citation-manager/actions/workflows/build.yml)
 [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/krassowski/jupyterlab-citation-manager/main?urlpath=lab)
+[![PyPI version](https://img.shields.io/pypi/v/jupyterlab-citation-manager.svg)](https://pypi.org/project/jupyterlab-citation-manager/)
 
 **Status: Work In Progress**. The underlying format may change; the support for migration from cite2c is provisional.
 Use in production deployments is not currently recommended - only install this extension if you plan to give
