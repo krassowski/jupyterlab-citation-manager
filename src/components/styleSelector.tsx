@@ -162,7 +162,7 @@ export class StyleSelector extends ModalSelector<
     const data = props.option.data;
     const info = data.style.info;
     const match = props.option.match;
-    // TODO: show license, authors, and fields tags
+    // TODO: show fields tags?
     return (
       <div className={'cm-Option-content'}>
         <span className={'cm-short-title'}>
