@@ -5,9 +5,8 @@
 [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/krassowski/jupyterlab-citation-manager/main?urlpath=lab)
 [![PyPI version](https://img.shields.io/pypi/v/jupyterlab-citation-manager.svg)](https://pypi.org/project/jupyterlab-citation-manager/)
 
-**Status: Work In Progress**. The underlying format may change; the support for migration from cite2c is provisional.
-Use in production deployments is not currently recommended - only install this extension if you plan to give
-feedback on the features and development directions.
+**Status: Work In Progress**. Not ready for production environments, may contains bugs.
+Feedback on any aspect of this extension is welcome.
 
 Citation Manager for JupyterLab:
 - enables adding citations to Jupyter notebooks in Markdown cells,
@@ -119,7 +118,10 @@ pip uninstall jupyterlab-citation-manager
 
 ### Citation clusters
 
-TODO
+This extension enables creation of citation clusters, this is a group of citations that are rendered together,
+following the chosen citation style. You can create a citation cluster manually by editing cell metadata.
+
+Support for creation and edition of citation cluster from the graphical interface is planned.
 
 ### Citation styles
 

@@ -1,6 +1,6 @@
 {
   "name": "jupyterlab-citation-manager",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Citation Manager for JupyterLab with Zotero integration",
   "keywords": [
     "jupyter",
