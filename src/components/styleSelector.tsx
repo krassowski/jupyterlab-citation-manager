@@ -103,7 +103,7 @@ export class StyleSelector extends ModalSelector<
     this.previewChanged = new Signal(this);
     this.activeChanged.connect((sender, style) => {
       this.previewChanged.emit(
-        <div>{this.trans.__('Loading preview...')}</div>
+        <div>{this.trans.__('Loading preview…')}</div>
       );
       this.renderPreview(style).then(renderedPreview =>
         this.previewChanged.emit(renderedPreview)
@@ -142,9 +142,6 @@ export class StyleSelector extends ModalSelector<
     const info = data.style.info;
     const match = props.option.match;
     // TODO: show license, authors, and fields tags
-    // TODO: also show the preview for the active item (maybe render in a promise to avoid delays?)
-    //        maybe even as a dedicated side panel; this might be better as it would allow to show both
-    //        the citation and bibliography examples (probably good to include some citation clusters in the example)
     return (
       <div className={'cm-Option-content'}>
         <span className={'cm-short-title'}>

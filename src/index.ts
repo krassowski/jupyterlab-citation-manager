@@ -290,15 +290,19 @@ class UnifiedCitationManager implements ICitationManager {
   ): Promise<IStylePreview> {
     if (!this.notebookTracker.currentWidget) {
       throw {
-        reason:
+        reason: this.trans.__(
           'Please switch to a document that supports citations to generate a preview'
+        )
       } as IPreviewNotAvailable;
     }
     const panel = this.notebookTracker.currentWidget;
+    // TODO: it would be good to show citation clusters if present
     const citations = this.getAdapter(panel).citations.slice(0, maxCitations);
     if (citations.length === 0) {
       throw {
-        reason: 'No citations in the document to generate the preview from.'
+        reason: this.trans.__(
+          'No citations in the document to generate the preview from.'
+        )
       } as IPreviewNotAvailable;
     }
     const processor = await this.createProcessor(style.id);
@@ -465,7 +469,7 @@ class UnifiedCitationManager implements ICitationManager {
     const progressBase: Partial<IProgress> = {
       label: this.trans.__('Updating citations'),
       tooltip: this.trans.__(
-        'Citation manager is updating citations and bibliography...'
+        'Citation manager is updating citations and bibliography…'
       )
     };
     this.progress.emit({ ...progressBase, state: 'started' });

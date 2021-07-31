@@ -306,7 +306,7 @@ export class ZoteroClient implements IReferenceProvider {
     const progressBase: Partial<IProgress> = {
       label: this.trans.__('Zotero sync.'),
       tooltip: this.trans.__(
-        'Connector for Zotero is synchronizing references...'
+        'Connector for Zotero is synchronizing references…'
       )
     };
     this.progress.emit({ ...progressBase, state: 'started' });
