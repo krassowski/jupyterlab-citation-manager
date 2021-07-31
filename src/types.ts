@@ -371,6 +371,9 @@ interface IStyleInfo {
   title: string;
   shortTitle?: string;
   rights?: string;
+  /**
+   * URL to the license
+   */
   license?: string;
   // may be empty
   fields: string[];

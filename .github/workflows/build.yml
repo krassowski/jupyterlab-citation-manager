@@ -65,7 +65,12 @@ jobs:
         cp dist/*.tar.gz myextension.tar.gz
         pip uninstall -y myextension jupyterlab
         rm -rf myextension
-
+    - name: Install testing dependencies
+      run: python -m pip install pytest
+    - name: Run Python tests
+      run: |
+        set -eux
+        pytest
     - uses: actions/upload-artifact@v2
       with:
         name: myextension-sdist

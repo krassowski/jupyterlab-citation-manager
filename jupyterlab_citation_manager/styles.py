@@ -34,9 +34,9 @@ def _extract_info(path, ns='{http://purl.org/net/xbiblio/csl}'):
         results = []
         for element in listing:
             name = element.find(f'{ns}name')
-            if not name:
+            if name is None:
                 continue
-            results.append(name)
+            results.append(name.text)
         return results
 
     return {

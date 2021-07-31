@@ -20,6 +20,7 @@ interface IStyleOptionMatch {
 function StylePreview(props: {
   preview: IStylePreview;
   maxExcerptSize: number;
+  trans: TranslationBundle;
 }) {
   const contexts = props.preview.citations.map(citation => {
     const excerpt = citation.context.excerpt;
@@ -31,13 +32,29 @@ function StylePreview(props: {
       </p>
     );
   });
+  const trans = props.trans;
+  const info = props.preview.style.info;
+  const rights = trans.__('License: %1', info.rights);
+  const license = info.license ? <a href={info.license}>{rights}</a> : rights;
   return (
     <div key={'style-preview-' + props.preview.style.id}>
-      <h3>{props.preview.style.info.title}</h3>
+      <h3>{info.title}</h3>
       <div className={'cm-StylePreview-content'}>
         <div className={'cm-previewContext'}>{contexts}</div>
-        <h4>Bibliography</h4>
+        <h4>{trans.__('Bibliography')}</h4>
         <div dangerouslySetInnerHTML={{ __html: props.preview.bibliography }} />
+        <h4>{trans.__('Information')}</h4>
+        <p>
+          {info.authors.length
+            ? trans._n(
+                'Author: %2',
+                'Authors: %2',
+                info.authors.length,
+                info.authors.join(', ')
+              )
+            : ''}
+        </p>
+        <p>{info.rights ? license : ''}</p>
       </div>
     </div>
   );
@@ -102,9 +119,7 @@ export class StyleSelector extends ModalSelector<
     this.addClass('cm-StyleSelector');
     this.previewChanged = new Signal(this);
     this.activeChanged.connect((sender, style) => {
-      this.previewChanged.emit(
-        <div>{this.trans.__('Loading preview…')}</div>
-      );
+      this.previewChanged.emit(<div>{this.trans.__('Loading preview…')}</div>);
       this.renderPreview(style).then(renderedPreview =>
         this.previewChanged.emit(renderedPreview)
       );
@@ -117,7 +132,13 @@ export class StyleSelector extends ModalSelector<
     }
     try {
       const preview = await this.previewProvider.previewStyle(style.style, 4);
-      return <StylePreview preview={preview} maxExcerptSize={50} />;
+      return (
+        <StylePreview
+          preview={preview}
+          maxExcerptSize={50}
+          trans={this.trans}
+        />
+      );
     } catch (availability) {
       if (availability.reason) {
         return <div>{availability.reason}</div>;
