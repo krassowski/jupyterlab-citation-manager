@@ -12,6 +12,7 @@ include yarn.lock
 graft csl-styles
 
 graft jupyterlab_citation_manager/labextension
+graft jupyterlab_citation_manager/tests
 graft docs
 
 # Javascript files
