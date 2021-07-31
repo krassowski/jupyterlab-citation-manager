@@ -48,6 +48,7 @@ import { NotebookAdapter, NotebookButtons } from './adapters/notebook';
 import {
   Dialog,
   ICommandPalette,
+  InputDialog,
   showDialog,
   showErrorMessage
 } from '@jupyterlab/apputils';
@@ -69,6 +70,8 @@ import { refreshIcon } from '@jupyterlab/ui-components';
 import OutputMode = CiteProc.OutputMode;
 import { cite2cPlugin } from './formats/cite2c';
 import { markdownDOIPlugin } from './formats/markdownDOI';
+import getItem = InputDialog.getItem;
+import { NameVariable } from './_csl_data';
 
 const PLUGIN_ID = 'jupyterlab-citation-manager:plugin';
 
@@ -262,7 +265,7 @@ class UnifiedCitationManager implements ICitationManager {
           defaultButton: 1
         });
         if (decision.button === migrateButton) {
-          const result = await format.migrateFrom(panel, adapter);
+          const result = await format.migrateFrom(panel, adapter, this);
           if (result.aborted) {
             await showErrorMessage(
               this.trans.__('Migration from %1 failed', format.name),
@@ -342,6 +345,128 @@ class UnifiedCitationManager implements ICitationManager {
       yield { ...citation, text: result[1] };
       i++;
     }
+  }
+
+  /**
+   * Given citable data, find the best match by comparing:
+   * - identifier (`id`)
+   * - digital object identifier (`DOI`)
+   * - unified resource identifier (`URL)
+   * - title and surnames of all authors
+   * with citable items available from each of the registered providers.
+   *
+   * If multiple matches are found the user
+   * will be prompted to resolve the ambiguity by selecting
+   * which of the match to use, displaying the message given
+   * in `context` argument.
+   *
+   * If titles of works matched by ID or DOI do not match,
+   * a dialog asking for confirmation will be displayed.
+   */
+  async matchItem(
+    data: Partial<ICitableData>,
+    context: string
+  ): Promise<IUnambiguousItemIdentifier | null> {
+    interface IMatch {
+      identifier: IUnambiguousItemIdentifier;
+      item: ICitableData;
+    }
+    const surnamesAsString = (authors: NameVariable[]) => {
+      return authors.map(author => author?.given).join(', ');
+    };
+    const compareTitles = (a: string, b: string) => {
+      return a.trim().toLocaleLowerCase() === b.trim().toLocaleLowerCase();
+    };
+    const dataAuthors = data.author
+      ? surnamesAsString(data.author)
+      : this.trans.__('unknown authors');
+    const matches: IMatch[] = [];
+    console.log(data);
+    for (const provider of this.providers.values()) {
+      console.log(provider.citableItems);
+      await provider.isReady;
+      for (const item of provider.citableItems.values()) {
+        const isMatch =
+          (data.id && item.id === data.id) ||
+          (data.DOI && item.DOI === data.DOI) ||
+          (data.URL && item.URL === data.URL) ||
+          (data.title &&
+            item.title &&
+            compareTitles(item.title, data.title) &&
+            data.author &&
+            item.author &&
+            surnamesAsString(item.author) === surnamesAsString(data.author));
+        if (isMatch) {
+          matches.push({
+            identifier: {
+              source: provider.id,
+              id: item.id as string
+            },
+            item: item
+          });
+        }
+      }
+    }
+    if (matches.length > 1) {
+      const choices = matches.map(match => {
+        return match.item.author
+          ? this.trans.__(
+              '"%1" by "%2" from %3',
+              match.item.title,
+              surnamesAsString(match.item.author),
+              match.identifier.source
+            )
+          : this.trans.__(
+              '"%1" from %3',
+              match.item.title,
+              match.identifier.source
+            );
+      });
+      const result = await getItem({
+        items: choices,
+        title: this.trans.__('Matching references'),
+        label: this.trans.__(
+          'Please choose the best matching item for "%1" by "%2" in order to %2',
+          data.title,
+          dataAuthors,
+          context
+        )
+      });
+      if (result.value === null) {
+        return null;
+      }
+      return matches[choices.indexOf(result.value)].identifier;
+    }
+    if (matches.length === 1) {
+      const match = matches[0];
+      if (
+        match.item.title &&
+        data.title &&
+        !compareTitles(match.item.title, data.title)
+      ) {
+        const result = await showDialog({
+          title: this.trans.__('Matching references'),
+          body: this.trans.__(
+            'The only matching references for "%1" by "%2" has a different title: "%2"',
+            data.title,
+            dataAuthors,
+            match.item.title
+          ),
+          buttons: [
+            Dialog.cancelButton(),
+            Dialog.createButton({
+              label: this.trans.__('Accept match anyway'),
+              accept: true
+            })
+          ]
+        });
+        if (!result.button.accept) {
+          return null;
+        }
+      }
+      return match.identifier;
+    }
+    return null;
   }
 
   protected async processFromScratch(

@@ -1,8 +1,8 @@
 # jupyterlab-citation-manager
 
 [![Github Actions Status](https://github.com/krassowski/jupyterlab-citation-manager/workflows/Build/badge.svg)](https://github.com/krassowski/jupyterlab-citation-manager/actions/workflows/build.yml)
-[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/krassowski/jupyterlab-citation-manager/main?urlpath=lab)
 ![CodeQL](https://github.com/krassowski/jupyterlab-citation-manager/workflows/CodeQL/badge.svg)
+[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/krassowski/jupyterlab-citation-manager/main?urlpath=lab)
 [![PyPI version](https://img.shields.io/pypi/v/jupyterlab-citation-manager.svg)](https://pypi.org/project/jupyterlab-citation-manager/)
 
 **Status: Work In Progress**. The underlying format may change; the support for migration from cite2c is provisional.
@@ -77,8 +77,8 @@ and ask for your permission to migrate them to Citation Manager format.
 Only citations inside of markdown cells will be detected.
 
 The migrated citations are stored separately from the citations from other providers (such as Zotero),
-but support for reconciliation is planned soon. Initially we will only re-use existing items in your collection
-(based on identical DOI) but the future releases might enable adding items as needed too.
+unless an exact match for given ID, DOI, URL or title and list of authors is found among items available
+from reference providers (like Zotero), in which case the item from the provider is used.
 
 ![animation of migrating from cite2c and from DOIs][migrate-gif]
 

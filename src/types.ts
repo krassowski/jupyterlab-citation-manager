@@ -261,10 +261,20 @@ export interface IMigrationResult {
 }
 
 export interface IAlternativeFormat<T extends IDocumentWidget> {
+  /**
+   * Format name that will be shown to the user.
+   */
   name: string;
+
+  /***
+   * Migrate all citations and bibliographies found in `document`,
+   * by reformatting to the curr format as returned by `adapter`
+   * and storing the relevant metadata in appropriate locations.
+   */
   migrateFrom(
     document: T,
-    adapter: IDocumentAdapter<T>
+    adapter: IDocumentAdapter<T>,
+    itemResolver: ICitableItemResolver
   ): Promise<IMigrationResult>;
 
   /**
@@ -324,9 +334,17 @@ export interface IStylePreviewProvider {
   previewStyle(style: IStyle, maxCitations: number): Promise<IStylePreview>;
 }
 
+export interface ICitableItemResolver {
+  matchItem(
+    data: Partial<ICitableData>,
+    context: string
+  ): Promise<IUnambiguousItemIdentifier | null>;
+}
+
 export interface ICitationManager
   extends CiteProc.ISystem,
-    IStylePreviewProvider {
+    IStylePreviewProvider,
+    ICitableItemResolver {
   registerReferenceProvider(provider: IReferenceProvider): void;
   addCitation(documentWidget: IDocumentWidget): void;
   addBibliography(documentWidget: IDocumentWidget): void;

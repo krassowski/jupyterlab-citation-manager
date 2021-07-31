@@ -5,11 +5,13 @@ import {
 import {
   IAlternativeFormat,
   ICitableItemRecords,
+  ICitableItemResolver,
   ICitationManager,
   ICitationMap,
   IDetectionResult,
   IDocumentAdapter,
-  IMigrationResult
+  IMigrationResult,
+  IUnambiguousItemIdentifier
 } from '../types';
 import {
   ITranslator,
@@ -30,11 +32,12 @@ namespace Cite2C {
 }
 
 class Cite2CFormat implements IAlternativeFormat<NotebookPanel> {
-  name = 'cite2c';
+  name: string;
   private readonly bibliographyPattern =
     /<div class=["']cite2c-biblio["']><\/div>/;
   private readonly catchAllPattern: RegExp;
   constructor(protected trans: TranslationBundle) {
+    this.name = trans.__('cite2c');
     this.catchAllPattern = this.citationSearchPattern('.*?');
   }
 
@@ -78,7 +81,8 @@ class Cite2CFormat implements IAlternativeFormat<NotebookPanel> {
 
   async migrateFrom(
     document: NotebookPanel,
-    adapter: NotebookAdapter
+    adapter: NotebookAdapter,
+    itemResolver: ICitableItemResolver
   ): Promise<IMigrationResult> {
     const cite2c = this.metadata(document);
     const result: IMigrationResult = {
@@ -113,19 +117,18 @@ class Cite2CFormat implements IAlternativeFormat<NotebookPanel> {
     console.log('Converting cite2c citations');
 
     const citationToItems: ICitationMap = Object.fromEntries(
-      Object.keys(cite2c.citations).map(
-        // TODO: if a matching item exists in zotero -> re-conciliate
-        citationID => {
-          return [
-            citationID,
-            [
-              {
-                id: citationID,
-                source: 'cite2c'
-              }
-            ]
-          ];
-        }
+      await Promise.all(
+        Object.entries(cite2c.citations).map(
+          // TODO: if a matching item exists in zotero -> re-conciliate
+          async ([citationID, item]) => {
+            const resolvedItemID: IUnambiguousItemIdentifier =
+              (await itemResolver.matchItem(item, this.name)) || {
+                source: 'cite2c',
+                id: citationID
+              };
+            return [citationID, [resolvedItemID]];
+          }
+        )
       )
     );
 

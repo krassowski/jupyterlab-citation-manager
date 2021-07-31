@@ -2,12 +2,14 @@ import {
   IAlternativeFormat,
   ICitableData,
   ICitableItemRecords,
+  ICitableItemResolver,
   ICitation,
   ICitationContext,
   ICitationManager,
   IDetectionResult,
   IDocumentAdapter,
-  IMigrationResult
+  IMigrationResult,
+  IUnambiguousItemIdentifier
 } from '../types';
 import { NotebookPanel } from '@jupyterlab/notebook';
 import {
@@ -41,9 +43,10 @@ const SOURCE_ID = 'DOI';
  *   - the second part is a DOI URL (either `https://doi.org` or `http://dx.doi.org`)
  */
 class MarkdownDOIFormat implements IAlternativeFormat<NotebookPanel> {
-  name = 'Markdown DOI';
+  name: string;
   private readonly catchAllPattern: RegExp;
   constructor(protected trans: TranslationBundle) {
+    this.name = this.trans.__('Markdown DOI');
     this.catchAllPattern = this.citationSearchPattern('.*?');
   }
 
@@ -72,7 +75,8 @@ class MarkdownDOIFormat implements IAlternativeFormat<NotebookPanel> {
 
   async migrateFrom(
     document: NotebookPanel,
-    adapter: NotebookAdapter
+    adapter: NotebookAdapter,
+    itemResolver: ICitableItemResolver
   ): Promise<IMigrationResult> {
     const result: IMigrationResult = {
       migratedCitationsCount: 0,
@@ -119,18 +123,20 @@ class MarkdownDOIFormat implements IAlternativeFormat<NotebookPanel> {
               : ((await response.json()) as ICitableData);
           const itemID = content.DOI || deducedDOI;
           dataFromDOI[itemID] = content;
+
+          const resolvedItemID: IUnambiguousItemIdentifier =
+            (await itemResolver.matchItem(content, this.name)) || {
+              source: SOURCE_ID,
+              id: itemID
+            };
+
           const citation: ICitation = {
             ...content,
             // note DOIs are unique, but there may be multiple citations for given DOI in this document(!)
             citationId: generateRandomID(existingCitationIDs),
             text: localMatch.groups.text,
             context: {} as ICitationContext,
-            items: [
-              {
-                source: SOURCE_ID,
-                id: itemID
-              }
-            ]
+            items: [resolvedItemID]
           };
           citationsInCell.push(citation);
           existingCitationIDs.add(citation.citationId);
