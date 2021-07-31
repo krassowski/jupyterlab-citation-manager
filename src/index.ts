@@ -72,6 +72,7 @@ import { cite2cPlugin } from './formats/cite2c';
 import { markdownDOIPlugin } from './formats/markdownDOI';
 import getItem = InputDialog.getItem;
 import { NameVariable } from './_csl_data';
+import { migrationDialog } from './components/dialogs';
 
 const PLUGIN_ID = 'jupyterlab-citation-manager:plugin';
 
@@ -248,23 +249,13 @@ class UnifiedCitationManager implements ICitationManager {
         detectionResult.citationsDetected !== 0 ||
         detectionResult.bibliographiesDetected !== 0
       ) {
-        const migrateButton = Dialog.okButton({
-          label: this.trans.__('Migrate')
-        });
-        const decision = await showDialog({
-          title: this.trans.__(
-            'Importing %1 citations is possible',
-            format.name
-          ),
-          body: this.trans.__(
-            'Detected %1 citation in %2 format. Would you like to migrate these citations to Citation Manager format?',
-            detectionResult.citationsDetected,
-            format.name
-          ),
-          buttons: [Dialog.cancelButton(), migrateButton],
-          defaultButton: 1
-        });
-        if (decision.button === migrateButton) {
+        const decision = await migrationDialog(
+          format,
+          detectionResult,
+          panel.context.path,
+          this.trans
+        );
+        if (decision.button.accept) {
           const result = await format.migrateFrom(panel, adapter, this);
           if (result.aborted) {
             await showErrorMessage(
@@ -381,9 +372,7 @@ class UnifiedCitationManager implements ICitationManager {
       ? surnamesAsString(data.author)
       : this.trans.__('unknown authors');
     const matches: IMatch[] = [];
-    console.log(data);
     for (const provider of this.providers.values()) {
-      console.log(provider.citableItems);
       await provider.isReady;
       for (const item of provider.citableItems.values()) {
         const isMatch =
