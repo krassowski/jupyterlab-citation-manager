@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { Dialog, showDialog } from '@jupyterlab/apputils';
+import { Dialog, ReactWidget, showDialog } from '@jupyterlab/apputils';
 import { TranslationBundle } from '@jupyterlab/translation';
 import { IAlternativeFormat, IDetectionResult } from '../types';
 
@@ -8,7 +8,7 @@ export function migrationDialog(
   detectionResult: IDetectionResult,
   path: string,
   trans: TranslationBundle
-) {
+): Promise<Dialog.IResult<void>> {
   const migrateButton = Dialog.okButton({
     label: trans.__('Migrate'),
     accept: true
@@ -37,5 +37,59 @@ export function migrationDialog(
     ),
     buttons: [Dialog.cancelButton(), migrateButton],
     defaultButton: 1
+  });
+}
+
+class AccessKeyDialog extends ReactWidget {
+  protected input: HTMLInputElement | null = null;
+  constructor(protected trans: TranslationBundle) {
+    super();
+  }
+  render() {
+    return (
+      <div className={'cm-AccessKeyDialog'}>
+        <p>
+          {this.trans.__(
+            'In order to access your Zotero collection you need to configure Zotero API key.'
+          )}
+        </p>
+        <p>
+          {this.trans.__(
+            'You can generate the API key after logging to Zotero:'
+          )}{' '}
+          <a href={'https://www.zotero.org'} target={'_blank'}>
+            www.zotero.org
+          </a>
+        </p>
+        <input
+          ref={input => {
+            this.input = input;
+          }}
+          placeholder={this.trans.__(
+            'Enter a key in format of: P9NiFoyLeZu2bZNvvuQPDWsd'
+          )}
+          className={'jp-mod-styled'}
+          type={'password'}
+        />
+      </div>
+    );
+  }
+  getValue(): string {
+    return this.input ? this.input.value : '';
+  }
+}
+
+export function getAccessKeyDialog(
+  trans: TranslationBundle
+): Promise<Dialog.IResult<string>> {
+  return showDialog<string>({
+    title: trans.__('Configure Zotero API Access Key'),
+    body: new AccessKeyDialog(trans),
+    buttons: [
+      Dialog.cancelButton({ label: trans.__('Remind me later') }),
+      Dialog.okButton({ label: trans.__('Approve and synchronise') })
+    ],
+    // TODO: bug upstream?
+    focusNodeSelector: 'input[type="password"]'
   });
 }

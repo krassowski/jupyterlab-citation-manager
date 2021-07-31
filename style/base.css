@@ -98,8 +98,7 @@
 }
 
 .cm-Option-content.cm-mod-fallback {
-    /* TODO */
-    color: grey;
+    color: var(--jp-ui-font-color2);
 }
 
 .cm-citeprocjs-cpal-attribution {
@@ -358,6 +357,15 @@ cite {
     font-weight: normal;
 }
 
+.cm-AccessKeyDialog a {
+    color: var(--jp-content-link-color);
+}
+
+.cm-AccessKeyDialog input[type='password']{
+    margin-top: 10px;
+    min-width: 50ch;
+    width: 100%;
+}
 
 /*
 CSL requires styling the fields according to:

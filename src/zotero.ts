@@ -13,7 +13,6 @@ import { ISettingRegistry } from '@jupyterlab/settingregistry';
 import { LabIcon } from '@jupyterlab/ui-components';
 import zoteroSvg from '../style/icons/book-plus.svg';
 import ISettings = ISettingRegistry.ISettings;
-import { InputDialog } from '@jupyterlab/apputils';
 import {
   ITranslator,
   nullTranslator,
@@ -24,6 +23,7 @@ import { ReadonlyPartialJSONObject } from '@lumino/coreutils';
 import { Signal } from '@lumino/signaling';
 import { UpdateProgress } from './components/progressbar';
 import { IStatusBar } from '@jupyterlab/statusbar';
+import { getAccessKeyDialog } from './components/dialogs';
 
 export const zoteroIcon = new LabIcon({
   name: 'citation:zotero',
@@ -234,17 +234,10 @@ export class ZoteroClient implements IReferenceProvider {
     forceUpdate = false
   ) {
     if (!this._key) {
-      const userKey = await InputDialog.getPassword({
-        title: this.trans.__('Configure Zotero API Access _key'),
-        label: this.trans.__(
-          `In order to access your Zotero collection you need to configure Zotero API key.
-          You can generate the API key after logging to www.zotero.org.
-          The key looks like this: P9NiFoyLeZu2bZNvvuQPDWsd.`
-        )
-      });
+      const userKey = await getAccessKeyDialog(this.trans);
       if (userKey.value) {
         this._key = userKey.value;
-        this.settings.set('_key', this._key).catch(console.warn);
+        this.settings.set('key', this._key).catch(console.warn);
       } else {
         return;
       }
@@ -435,6 +428,9 @@ export class ZoteroClient implements IReferenceProvider {
   }
 
   private reloadKey() {
+    if (!this._key) {
+      console.warn('No access key to Zotero, cannot reload');
+    }
     return this.fetch('keys/' + this._key).then(response => {
       if (!response) {
         console.error(response);
