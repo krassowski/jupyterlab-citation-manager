@@ -61,7 +61,7 @@ To get the details on references in your collections without leaving JupyterLab 
 and start typing to find item of interest. You will be able to preview the abstract, check metadata and even
 open the article inside JupyterLab (or in a new browser tab - depending on your preference).
 
-References with citations in the current document will show on top when opening the explorer
+References with citations in the current document will be show on top when opening the explorer
 and enable a quick preview of citation context and navigation to the relevant place in the document
 (by clicking on the citation context).
 

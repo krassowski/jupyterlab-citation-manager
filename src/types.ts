@@ -268,7 +268,7 @@ export interface IAlternativeFormat<T extends IDocumentWidget> {
 
   /***
    * Migrate all citations and bibliographies found in `document`,
-   * by reformatting to the curr format as returned by `adapter`
+   * by reformatting to the current format as returned by `adapter`
    * and storing the relevant metadata in appropriate locations.
    */
   migrateFrom(
