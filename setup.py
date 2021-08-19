@@ -25,7 +25,6 @@ labext_name = "jupyterlab-citation-manager"
 data_files_spec = [
     ("share/jupyter/labextensions/%s" % labext_name, str(lab_path), "**"),
     ("share/jupyter/labextensions/%s" % labext_name, str(HERE), "install.json"),
-    ("share/jupyter/csl-styles", str(HERE / "csl-styles"), "**"),
     (
         "etc/jupyter/jupyter_notebook_config.d",
         "jupyter-config/jupyter_notebook_config.d",
@@ -55,7 +54,8 @@ setup_args = dict(
     long_description_content_type="text/markdown",
     packages=setuptools.find_packages(),
     install_requires=[
-        "jupyter_server>=1.6,<2"
+        "jupyter_server>=1.6,<2",
+        "jupyterlab_citation_data"
     ],
     zip_safe=False,
     include_package_data=True,
@@ -71,10 +71,10 @@ setup_args = dict(
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
         "Framework :: Jupyter",
-        "Framework :: Jupyter :: JupyterLab",
-        "Framework :: Jupyter :: JupyterLab :: 3",
-        "Framework :: Jupyter :: JupyterLab :: Extensions",
-        "Framework :: Jupyter :: JupyterLab :: Extensions :: Prebuilt"
+        #"Framework :: Jupyter :: JupyterLab",
+        #"Framework :: Jupyter :: JupyterLab :: 3",
+        #"Framework :: Jupyter :: JupyterLab :: Extensions",
+        #"Framework :: Jupyter :: JupyterLab :: Extensions :: Prebuilt"
     ],
 )
 

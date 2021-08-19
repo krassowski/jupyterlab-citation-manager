@@ -12,7 +12,7 @@ Citation Manager for JupyterLab:
 - enables adding citations to Jupyter notebooks in Markdown cells,
 - keeps the bibliography in sync with the citations in the document,
 - supports thousands of citation styles,
-- offers a way to effectively search through your collection of references,
+- offers a way to efficiently search through your collection of references,
 - integrates with the Zotero® service (Connector for Zotero) by default,
 - is modular in design, allowing for integration of other reference managers in the future.
 
@@ -217,7 +217,9 @@ folder is located. Then you can remove the symlink named `jupyterlab-citation-ma
 
 ### Updating citation styles
 
-The citation styles are retrieved from the CSL repository using git submodules.
+The citation styles are retrieved from the CSL repository using git submodules
+and reside in the [jupyterlab-citation-data](https://github.com/krassowski/jupyterlab-citation-data) repository.
+
 You can update the submodule to fetch the most recent citation styles:
 
 ```bash
