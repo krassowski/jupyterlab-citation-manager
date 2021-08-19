@@ -47,8 +47,6 @@ jobs:
 
     - name: Install dependencies
       run: python -m pip install -U jupyterlab~=3.0 check-manifest
-    - name: Get submodules
-      run: git submodule update --init
     - name: Install extension
       run: |
         set -eux

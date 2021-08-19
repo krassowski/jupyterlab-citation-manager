@@ -22,8 +22,6 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip build twine jupyterlab
-    - name: Check manifest
-      run: check-manifest -v
     - name: Build the federated extension in a separated build environment
       run: |
         python -m build
