@@ -147,6 +147,7 @@
 .cm-Option .cm-type {
     flex: 0 0 auto;
 }
+
 .cm-Option .cm-title {
     flex: auto;
     height: 1.2em;
@@ -294,6 +295,19 @@ cite {
     max-height: var(--max-height);
     overflow: hidden;
     position: relative;
+}
+
+.cm-ReferenceBrowser .cm-type-detail {
+    float: right;
+    padding-top: 2px;
+}
+
+.cm-ReferenceBrowser .cm-ButtonBar {
+    float: left;
+}
+
+.cm-ReferenceBrowser .cm-abstract {
+    clear: both;
 }
 
 .cm-abstract.cm-collapsed::after {

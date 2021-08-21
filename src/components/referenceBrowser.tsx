@@ -162,7 +162,6 @@ export class ReferenceBrowser extends Selector<
           <span className={'cm-year'} title={publication.date?.toUTCString()}>
             {publication.date?.getFullYear()}
           </span>
-          <span className={'cm-type'}>{type}</span>
         </div>
         <div className={'cm-Option-details'}>
           <CitationOptionAuthors
@@ -198,6 +197,7 @@ export class ReferenceBrowser extends Selector<
               tooltip={this.trans.__('Show full metadata')}
             />
           </div>
+          <span className={'cm-type-detail'}>{type}</span>
           <div
             className={'cm-abstract cm-collapsed'}
             onClick={event => {
