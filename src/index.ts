@@ -136,6 +136,7 @@ class UnifiedCitationManager implements ICitationManager {
   private styles: StylesManager;
   private processors: WeakMap<DocumentWidget, Promise<CiteProc.IEngine>>;
   private localeCache: Map<string, string>;
+  private updateInProgress = false;
   protected defaultStyleID = 'apa.csl';
   protected allReady: ICancellablePromise<any>;
   protected formats: IAlternativeFormat<any>[];
@@ -537,13 +538,23 @@ class UnifiedCitationManager implements ICitationManager {
   }
 
   public async updateReferences() {
+    if (this.updateInProgress) {
+      return Promise.reject(
+        'Cancelling update - an update is already in progress'
+      );
+    }
+    this.updateInProgress = true;
     return Promise.all(
       [...this.providers.values()].map(provider =>
         provider.updatePublications(true)
       )
-    ).then(() => {
-      this.updateReferenceBrowser();
-    });
+    )
+      .then(() => {
+        this.updateReferenceBrowser();
+      })
+      .finally(() => {
+        this.updateInProgress = false;
+      });
   }
 
   private collectOptions(
