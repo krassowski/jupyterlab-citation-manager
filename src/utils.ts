@@ -141,10 +141,6 @@ function getDate(date: DateContentModel): Date {
     // TODO: perform proper EDTF parsing
     return parseEDTF(date);
   }
-  if (date.edtf) {
-    // TODO: perform proper EDTF parsing
-    return parseEDTF(date.edtf);
-  }
   if (date.raw) {
     return new Date(date.raw);
   }
