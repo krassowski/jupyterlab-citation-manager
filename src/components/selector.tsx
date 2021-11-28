@@ -401,12 +401,11 @@ export abstract class ModalSelector<O, M> extends Selector<O, M> {
   }
 
   getItem(options: O[]): Promise<O> {
-    const promise = super.getItem(options);
     this.show();
     if (!this.isAttached) {
       this.attach();
     }
-    return promise;
+    return super.getItem(options);
   }
 
   acceptOption(option?: O): void {

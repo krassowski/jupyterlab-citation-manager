@@ -60,6 +60,27 @@ function StylePreview(props: {
   );
 }
 
+function matchSumOfSquaresPromoteMatchingLength(
+  a: string,
+  query: string
+): IMatchResult | null {
+  const result = StringExt.matchSumOfSquares(a, query);
+  if (result !== null) {
+    return {
+      score: result.score * (a.length / query.length),
+      indices: result.indices
+    };
+  }
+  return null;
+}
+
+function scoreOrFallback(
+  preferred: IMatchResult | null | undefined,
+  fallback: IMatchResult | null | undefined
+) {
+  return preferred !== null ? preferred?.score : fallback?.score;
+}
+
 const styleOptionModel = {
   filter(option: IOption<IStyleOption, IStyleOptionMatch>): boolean {
     return !!option.match?.title || !!option.match?.shortTitle;
@@ -68,11 +89,11 @@ const styleOptionModel = {
     query = query.toLowerCase();
     const style = option.style;
     // TODO: edit distance
-    const titleMatch = StringExt.matchSumOfSquares(
+    const titleMatch = matchSumOfSquaresPromoteMatchingLength(
       (style.info.title || '').toLowerCase(),
       query
     );
-    const shortTitleMatch = StringExt.matchSumOfSquares(
+    const shortTitleMatch = matchSumOfSquaresPromoteMatchingLength(
       (style.info.shortTitle || '').toLowerCase(),
       query
     );
@@ -87,8 +108,10 @@ const styleOptionModel = {
   ): number {
     // TODO show generic-base (and maybe others) higher
     return (
-      InfinityIfMissing(a.match?.shortTitle?.score) -
-        InfinityIfMissing(b.match?.shortTitle?.score) ||
+      InfinityIfMissing(scoreOrFallback(a.match?.shortTitle, a.match?.title)) -
+        InfinityIfMissing(
+          scoreOrFallback(b.match?.shortTitle, b.match?.title)
+        ) ||
       InfinityIfMissing(a.match?.title?.score) -
         InfinityIfMissing(b.match?.title?.score)
     );
@@ -115,7 +138,9 @@ export class StyleSelector extends ModalSelector<
     protected previewProvider: IStylePreviewProvider
   ) {
     super({ model: styleOptionModel });
-    this.placeholder = trans.__('Start typing style name or abbreviation');
+    this.placeholder = trans.__(
+      'Start typing style name or abbreviation (more styles will show up)'
+    );
     this.addClass('cm-StyleSelector');
     this.previewChanged = new Signal(this);
     this.activeChanged.connect((sender, style) => {
@@ -149,11 +174,11 @@ export class StyleSelector extends ModalSelector<
   }
 
   protected getInitialOptions(): IStyleOption[] {
-    return this.options.filter(style =>
-      this.preferredFields.some(field =>
+    return this.options.filter(style => {
+      return this.preferredFields.some(field =>
         style.style.info.fields.includes(field)
-      )
-    );
+      );
+    });
   }
 
   protected renderOption(props: {
