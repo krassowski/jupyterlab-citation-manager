@@ -831,9 +831,9 @@ class UnifiedCitationManager implements ICitationManager {
         console.log(`Success fetching style ${styleID} from server extension`);
         return new CSL.Engine(this, response);
       })
-      .catch(() => {
+      .catch((e: Error) => {
         console.warn(
-          `Could not get the style ${styleID} from server extension;` +
+          `Could not get the style ${styleID} from server extension (${e});` +
             ' falling back to the fetching directly from GitHub.'
         );
 

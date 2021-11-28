@@ -68,7 +68,7 @@ class AccessKeyDialog extends ReactWidget {
           placeholder={this.trans.__(
             'Enter a key in format of: P9NiFoyLeZu2bZNvvuQPDWsd'
           )}
-          className={'jp-mod-styled'}
+          className={'jp-mod-styled cm-zotero-key-input'}
           type={'password'}
         />
       </div>
@@ -86,8 +86,14 @@ export function getAccessKeyDialog(
     title: trans.__('Configure Zotero API Access Key'),
     body: new AccessKeyDialog(trans),
     buttons: [
-      Dialog.cancelButton({ label: trans.__('Remind me later') }),
-      Dialog.okButton({ label: trans.__('Approve and synchronise') })
+      Dialog.cancelButton({
+        label: trans.__('Remind me later'),
+        className: 'cm-remind-later'
+      }),
+      Dialog.okButton({
+        label: trans.__('Approve and synchronise'),
+        className: 'cm-approve-and-sync'
+      })
     ],
     // TODO: bug upstream?
     focusNodeSelector: 'input[type="password"]'
