@@ -4,6 +4,7 @@ import { IDocumentWidget } from '@jupyterlab/docregistry';
 import { LabIcon } from '@jupyterlab/ui-components';
 import IIcon = LabIcon.IIcon;
 import { ISignal } from '@lumino/signaling';
+import OutputMode = CiteProc.OutputMode;
 
 export type ICitableData = CslData[0];
 
@@ -13,6 +14,13 @@ interface IData {
 type CitationID = string;
 export type CitationLocation = [CitationID, number];
 export type CitationUpdate = [number, string];
+
+export type CitProcCitableData = ICitableData & {
+  // required by to make LaTeX citations (and citation IDs) work, see
+  // https://github.com/Juris-M/citeproc-js/issues/122#issuecomment-981076349
+  system_id?: string;
+};
+
 export interface ICitationItemData {
   id: string;
   item?: ICitableData;
@@ -25,6 +33,11 @@ export type CitationToInsert = {
   citationID: CitationID;
   citationItems: ICitationItemData[];
 };
+
+export interface ICitationFormattingOptions {
+  defaultFormat: OutputMode;
+  linkToBibliography: boolean;
+}
 
 /**
  * Unambiguous identifier of a citable item.
@@ -84,6 +97,8 @@ export namespace CiteProc {
    * https://citeproc-js.readthedocs.io/en/latest/running.html
    */
   export interface IEngine {
+    opt: any;
+
     updateItems(idList: string[]): void;
 
     updateUncitedItems(idList: string[]): void;
@@ -108,13 +123,17 @@ export namespace CiteProc {
    */
   export interface ISystem {
     retrieveLocale(lang: string): string;
-    retrieveItem(id: string): ICitableData;
+    retrieveItem(id: string): CitProcCitableData;
     /**
      * Generate string that will be appended to the bibliography entry to jump to the (first) citation in the document.
+     *
+     * Requires `system_id` in `CitProcCitableData`.
      */
     embedBibliographyEntry?(itemID: string): string;
     /**
      * Pos-process citation entry.
+     *
+     * Requires `development_extensions.apply_citation_wrapper` to be enabled and `system_id` in `CitProcCitableData`.
      */
     wrapCitationEntry?(
       entry: string,
@@ -297,6 +316,8 @@ export interface IDocumentAdapter<T extends IDocumentWidget> {
    */
   getCitationStyle(): string | undefined;
   setCitationStyle(value: string): void;
+
+  outputFormat: OutputMode;
 
   insertCitation(citation: CitationInsertData): void;
   updateCitation(citation: CitationInsertData): void;

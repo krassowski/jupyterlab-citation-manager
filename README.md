@@ -81,6 +81,20 @@ from reference providers (like Zotero), in which case the item from the provider
 
 ![animation of migrating from cite2c and from DOIs][migrate-gif]
 
+### Exporting to LaTeX
+
+Citation Manager supports LaTeX as one of the output formats. For now the citations are embedded as plain-text,
+while the bibliography uses semantic `thebibliography` LaTeX environment.
+To configure notebook to export citations to LaTeX:
+
+1. Go to `Advanced Settings Editor` -> `Citation Manager` and change the default `outputFormat` to `latex`.
+2. Insert bibliography in a cell, but instead of using `Markdown` cell, use `Raw` cell
+3. Open `Property Inspector` sidebar and change `Raw NBConvert Format` to `LaTeX` (you need to have the `Raw` cell selected for the dropdown to appear)
+4. From `File` menu select `Save and Export Notebook As…` and choose `LaTeX`
+5. Compile the resulting `.tex` to desired output such as PDF with preferred tool (e.g. `pdflatex` on Linux)
+
+![LaTeX setup overview][latex-setup]
+
 [bookshelf]: https://raw.githubusercontent.com/krassowski/jupyterlab-citation-manager/main/style/icons/bookshelf.svg?sanitize=true
 [book-open-variant]: https://raw.githubusercontent.com/krassowski/jupyterlab-citation-manager/main/style/icons/book-open-variant.svg?sanitize=true
 [book-plus]: https://raw.githubusercontent.com/krassowski/jupyterlab-citation-manager/main/style/icons/book-plus.svg?sanitize=true
@@ -90,10 +104,11 @@ from reference providers (like Zotero), in which case the item from the provider
 [add-bibliography]: https://raw.githubusercontent.com/krassowski/jupyterlab-citation-manager/main/docs/images/add-bibliography.gif
 [change-style]: https://raw.githubusercontent.com/krassowski/jupyterlab-citation-manager/main/docs/images/change-style.gif
 [migrate-gif]: https://raw.githubusercontent.com/krassowski/jupyterlab-citation-manager/main/docs/images/migrate-cite2c-and-doi.gif
+[latex-setup]: https://raw.githubusercontent.com/krassowski/jupyterlab-citation-manager/main/docs/images/latex.png
 
 ## Requirements
 
-* JupyterLab >= 3.1
+* JupyterLab >= 3.2
 * Modern browser (with ES 2019 support, e.g. Firefox 64+, or Chrome 73+)
 * [Zotero account](https://www.zotero.org/user/register)
 
