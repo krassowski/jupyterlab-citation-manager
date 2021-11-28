@@ -1,10 +1,12 @@
 import {
   CitationInsertData,
   CitationQuerySubset,
+  CiteProc,
   CommandIDs,
   ICitableItemRecords,
   ICitableItemRecordsBySource,
   ICitation,
+  ICitationFormattingOptions,
   ICitationManager,
   ICitationMap,
   IDocumentAdapter
@@ -18,6 +20,8 @@ import { JupyterFrontEnd } from '@jupyterlab/application';
 import { ReadonlyPartialJSONObject } from '@lumino/coreutils';
 import ICellMetadata = NotebookAdapter.ICellMetadata;
 import type { Cell } from '@jupyterlab/cells';
+import OutputMode = CiteProc.OutputMode;
+import { itemIdToPrimitive } from '../index';
 
 export namespace NotebookAdapter {
   export interface INotebookMetadata extends ReadonlyPartialJSONObject {
@@ -29,6 +33,10 @@ export namespace NotebookAdapter {
      * Mapping of citable items used in this document, grouped by the source.
      */
     items: ICitableItemRecordsBySource;
+    /**
+     * The output format (default `html`).
+     */
+    format?: OutputMode;
   }
 
   export interface ICellMetadata extends ReadonlyPartialJSONObject {
@@ -45,7 +53,10 @@ export const cellMetadataKey = 'citation-manager';
 export class NotebookAdapter implements IDocumentAdapter<NotebookPanel> {
   citations: ICitation[];
 
-  constructor(public document: NotebookPanel) {
+  constructor(
+    public document: NotebookPanel,
+    public options: ICitationFormattingOptions
+  ) {
     this.citations = [];
   }
 
@@ -126,6 +137,14 @@ export class NotebookAdapter implements IDocumentAdapter<NotebookPanel> {
     return metadata.style;
   }
 
+  get outputFormat(): OutputMode {
+    const metadata = this.notebookMetadata;
+    if (!metadata) {
+      return this.options.defaultFormat;
+    }
+    return metadata.format || this.options.defaultFormat;
+  }
+
   setCitationStyle(newStyle: string): void {
     if (!this.document.model) {
       console.warn('Cannot set style on', this.document, ' - no model');
@@ -141,11 +160,29 @@ export class NotebookAdapter implements IDocumentAdapter<NotebookPanel> {
   }
 
   formatBibliography(bibliography: string): string {
+    console.log('format', this.outputFormat);
+    if (this.outputFormat === 'latex') {
+      return bibliography;
+    }
     return `<!-- BIBLIOGRAPHY START -->${bibliography}<!-- BIBLIOGRAPHY END -->`;
   }
 
   formatCitation(citation: CitationInsertData): string {
-    return `<cite id="${citation.citationId}">${citation.text}</cite>`;
+    // note: not using `wrapCitationEntry` as that was causing more problems
+    // (itemID undefined).
+    let text = citation.text;
+    if (this.outputFormat === 'html' && this.options.linkToBibliography) {
+      // link to the first mentioned element
+      const first = citation.items[0];
+      const firstID = itemIdToPrimitive(first);
+      text = `<a href="#${firstID}">${text}</a>`;
+    } else if (this.outputFormat === 'latex') {
+      // this does not work well with MathJax - we need to figure out something else!
+      // but it might still be useful (without $) for text editor adapter
+      // const citationIDs = citation.items.map(itemIdToPrimitive).join(',');
+      // text = `$$\\cite{${citationIDs}}$$`;
+    }
+    return `<cite id="${citation.citationId}">${text}</cite>`;
   }
 
   insertCitation(citation: CitationInsertData): void {
@@ -169,7 +206,7 @@ export class NotebookAdapter implements IDocumentAdapter<NotebookPanel> {
       `<cite id=["']${citation.citationId}["'][^>]*?>([\\s\\S]*?)<\\/cite>`
     );
     let matches = 0;
-    this.markdownCells.forEach(cell => {
+    this.nonCodeCells.forEach(cell => {
       const oldText = cell.model.value.text;
       const matchIndex = oldText.search(pattern);
       if (matchIndex !== -1) {
@@ -196,13 +233,38 @@ export class NotebookAdapter implements IDocumentAdapter<NotebookPanel> {
   }
 
   updateBibliography(bibliography: string): void {
-    const pattern =
+    const htmlPattern =
       /(?<=<!-- BIBLIOGRAPHY START -->)([\s\S]*?)(?=<!-- BIBLIOGRAPHY END -->)/;
-    this.markdownCells.forEach(cell => {
+    const htmlFullyCapturingPattern =
+      /(<!-- BIBLIOGRAPHY START -->[\s\S]*?<!-- BIBLIOGRAPHY END -->)/;
+    const latexPattern =
+      /(\\begin{thebibliography}[\s\S]*?\\end{thebibliography})/;
+
+    this.nonCodeCells.forEach(cell => {
       const oldText = cell.model.value.text;
       if (oldText.match(/<!-- BIBLIOGRAPHY START -->/)) {
-        cell.model.value.text = oldText.replace(pattern, bibliography);
-        if (oldText.search(pattern) === -1) {
+        cell.model.value.text = oldText.replace(
+          this.outputFormat === 'latex'
+            ? htmlFullyCapturingPattern
+            : htmlPattern,
+          this.outputFormat === 'latex' ? bibliography.trim() : bibliography
+        );
+        if (oldText.search(htmlPattern) === -1) {
+          console.warn(
+            'Failed to update bibliography',
+            bibliography,
+            'in',
+            oldText
+          );
+        }
+      } else if (oldText.match(/\\begin{thebibliography}/)) {
+        cell.model.value.text = oldText.replace(
+          latexPattern,
+          this.outputFormat !== 'latex'
+            ? this.formatBibliography(bibliography)
+            : bibliography.trim()
+        );
+        if (oldText.search(latexPattern) === -1) {
           console.warn(
             'Failed to update bibliography',
             bibliography,
@@ -217,15 +279,15 @@ export class NotebookAdapter implements IDocumentAdapter<NotebookPanel> {
   private chooseCells(subset: CitationQuerySubset) {
     switch (subset) {
       case 'all':
-        return this.markdownCells;
+        return this.nonCodeCells;
       case 'after-cursor':
         // TODO check for off by one
-        return this.selectMarkdownCells(
+        return this.selectNonCodeCells(
           this.document.content.activeCellIndex,
           Infinity
         );
       case 'before-cursor':
-        return this.selectMarkdownCells(
+        return this.selectNonCodeCells(
           0,
           this.document.content.activeCellIndex
         );
@@ -275,19 +337,23 @@ export class NotebookAdapter implements IDocumentAdapter<NotebookPanel> {
     }
   }
 
-  private get markdownCells() {
+  /**
+   * We want to insert citation/bibliography in Markdown and Raw cells
+   * (raw cells so that LaTeX can be exported as-is).
+   */
+  private get nonCodeCells() {
     return this.document.content.widgets.filter(
-      cell => cell.model.type === 'markdown'
+      cell => cell.model.type !== 'code'
     );
   }
 
-  private selectMarkdownCells(min: number, max: number) {
+  private selectNonCodeCells(min: number, max: number) {
     return this.document.content.widgets
       .slice(min, max)
-      .filter(cell => cell.model.type === 'markdown');
+      .filter(cell => cell.model.type !== 'code');
   }
 
-  addCitationMetadata(cell: Cell, citationsInCell: ICitation[]) {
+  addCitationMetadata(cell: Cell, citationsInCell: ICitation[]): void {
     let metadata: ICellMetadata = cell.model.metadata.get(
       cellMetadataKey
     ) as ICellMetadata;

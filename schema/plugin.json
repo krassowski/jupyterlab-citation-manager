@@ -33,11 +33,17 @@
       "default": "apa.csl",
       "description": "The default citation style, one of the styles in the Citation Style Language (CSL) repository."
     },
+    "linkToBibliography": {
+      "title": "Link citations to bibliography",
+      "type": "boolean",
+      "default": true,
+      "description": "Should citations link to the bibliography? Only available for HTML output format."
+    },
     "outputFormat": {
-      "title": "Format of citations and bibliography",
+      "title": "The default format of citations and bibliography",
       "type": "string",
       "default": "html",
-      "description": "One of: html, text, rtf, asciidoc, fo, latex",
+      "description": "One of: html, text, rtf, asciidoc, fo, latex. Only `html` and `latex` are supported.",
       "enum": ["html", "text", "rtf", "asciidoc", "fo", "latex"]
     }
   },

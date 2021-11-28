@@ -1,3 +1,4 @@
+import * as CSL from 'citeproc';
 import {
   ILayoutRestorer,
   JupyterFrontEnd,
@@ -27,7 +28,9 @@ import {
   CiteProc,
   IUnambiguousItemIdentifier,
   ICitableItemRecordsBySource,
-  IAlternativeFormat
+  IAlternativeFormat,
+  CitProcCitableData,
+  ICitationFormattingOptions
 } from './types';
 import { zoteroPlugin } from './zotero';
 import {
@@ -37,7 +40,6 @@ import {
   simpleRequest
 } from './utils';
 
-import * as CSL from 'citeproc';
 import { CitationSelector } from './components/citationSelector';
 import {
   ITranslator,
@@ -143,7 +145,10 @@ class UnifiedCitationManager implements ICitationManager {
 
   progress: Signal<UnifiedCitationManager, IProgress>;
   private currentAdapter: IDocumentAdapter<any> | null = null;
-  private outputFormat: CiteProc.OutputMode = 'html';
+  private formattingOptions: ICitationFormattingOptions = {
+    defaultFormat: 'html',
+    linkToBibliography: true
+  };
 
   protected createAllReadyPromiseWrapper(): ICancellablePromise<any> {
     const REASON_CANCELLED = 'cancelled';
@@ -192,12 +197,20 @@ class UnifiedCitationManager implements ICitationManager {
     this.processors = new WeakMap();
     this.localeCache = new Map();
     // TODO generalize to allow use in Markdown Editor too
+    notebookTracker.currentChanged.connect(async (tracker, panel) => {
+      if (!panel) {
+        return;
+      }
+      await this.createAllReadyPromiseWrapper().promise;
+      this.processFromScratch(panel).catch(console.warn);
+    });
+
     notebookTracker.widgetAdded.connect((tracker, panel) => {
       const debouncedUpdate = new Debouncer(async () => {
         await this.createAllReadyPromiseWrapper().promise;
         this.processFromScratch(panel).catch(console.warn);
         // TODO: hoist debounce rate to settings
-      }, 2000);
+      }, 1500);
 
       panel.content.modelContentChanged.connect(() => {
         debouncedUpdate.invoke().catch(console.warn);
@@ -223,7 +236,7 @@ class UnifiedCitationManager implements ICitationManager {
     this.providers = new Map();
     if (settingsRegistry) {
       settingsRegistry.load(PLUGIN_ID).then(settings => {
-        settings.changed.connect(this.updateSettings);
+        settings.changed.connect(this.updateSettings.bind(this));
         this.updateSettings(settings);
       });
     }
@@ -519,7 +532,18 @@ class UnifiedCitationManager implements ICitationManager {
 
   protected updateSettings(settings: ISettingRegistry.ISettings) {
     this.defaultStyleID = settings.get('defaultStyle').composite as string;
-    this.outputFormat = settings.get('outputFormat').composite as OutputMode;
+    this.formattingOptions.defaultFormat = settings.get('outputFormat')
+      .composite as OutputMode;
+    this.formattingOptions.linkToBibliography = settings.get(
+      'linkToBibliography'
+    ).composite as boolean;
+    // refresh if needed
+    const currentPanel = this.notebookTracker.currentWidget;
+    if (currentPanel) {
+      this.createAllReadyPromiseWrapper().promise.then(() => {
+        this.processFromScratch(currentPanel).catch(console.warn);
+      });
+    }
   }
 
   public registerReferenceProvider(provider: IReferenceProvider): void {
@@ -633,10 +657,13 @@ class UnifiedCitationManager implements ICitationManager {
   private getAdapter(content: NotebookPanel): IDocumentAdapter<any> {
     let adapter = this.adapters.get(content);
     if (!adapter) {
-      adapter = new NotebookAdapter(content);
+      adapter = new NotebookAdapter(content, this.formattingOptions);
       this.adapters.set(content, adapter);
       const initialStyle = adapter.getCitationStyle();
-      this.processors.set(content, this.createProcessor(initialStyle));
+      this.processors.set(
+        content,
+        this.createProcessor(initialStyle, adapter.outputFormat)
+      );
     }
     if (!adapter) {
       throw Error('This should not happen');
@@ -646,9 +673,14 @@ class UnifiedCitationManager implements ICitationManager {
 
   embedBibliographyEntry(itemID: string) {
     if (itemID) {
-      // TODO add a setting to switch it on/off
-      // TODO why itemID is undefined???
-      return `<a href="#${itemID}">↑</a>`;
+      if (
+        this.formattingOptions.defaultFormat === 'html' &&
+        this.formattingOptions.linkToBibliography
+      ) {
+        // allow to jump to this citation using `system_id`
+        return `<i id="${itemID}"></i>`;
+      }
+      return itemID;
     }
     return '';
   }
@@ -819,9 +851,15 @@ class UnifiedCitationManager implements ICitationManager {
     );
   }
 
-  async createProcessor(styleID?: string): Promise<CiteProc.IEngine> {
+  async createProcessor(
+    styleID?: string,
+    formatID?: OutputMode
+  ): Promise<CiteProc.IEngine> {
     if (!styleID) {
       styleID = this.defaultStyleID;
+    }
+    if (!formatID) {
+      formatID = this.formattingOptions.defaultFormat;
     }
     // try the offline copy first, in case those are use-defined (local) styles,
     // and because it should be generally faster and nicer for GitHub:
@@ -846,7 +884,9 @@ class UnifiedCitationManager implements ICitationManager {
         });
       })
       .then((engine: CiteProc.IEngine) => {
-        engine.setOutputFormat(this.outputFormat);
+        monkeyPatchCiteProc();
+        engine.setOutputFormat(formatID as OutputMode);
+        // engine.opt.development_extensions.apply_citation_wrapper = true;
         return engine;
       });
   }
@@ -877,7 +917,7 @@ class UnifiedCitationManager implements ICitationManager {
       });
   }
 
-  retrieveItem(id: string): ICitableData {
+  retrieveItem(id: string): CitProcCitableData {
     const splitPos = id.indexOf('|');
     const provider = id.slice(0, splitPos);
     const key = id.slice(splitPos + 1);
@@ -903,7 +943,9 @@ class UnifiedCitationManager implements ICitationManager {
     }
     return {
       ...item,
-      id: id
+      id: id,
+      // see: https://github.com/Juris-M/citeproc-js/issues/122#issuecomment-981076349
+      system_id: id
     };
   }
 
@@ -1004,6 +1046,43 @@ function addCommands(
       command: CommandIDs.updateReferences,
       category: category
     });
+  }
+}
+
+function monkeyPatchCiteProc() {
+  // the LaTeX in cite proc by default does not include the text - let's include it
+  if (!CSL.Output.Formats.latex) {
+    console.error('Could not monkey-patch LaTeX format: not in prototype');
+  } else {
+    CSL.Output.Formats.latex['@bibliography/entry'] = function (
+      state: any,
+      str: string
+    ) {
+      return (
+        '\n\\bibitem{' +
+        state.sys.embedBibliographyEntry(this.item_id) +
+        '}\n' +
+        str +
+        '\n\n'
+      );
+    };
+    // Fix a bug in bibend, upstream PR: https://github.com/Juris-M/citeproc-js/pull/193
+    CSL.Output.Formats.latex['bibend'] = '\\end{thebibliography}';
+  }
+  if (!CSL.Output.Formats.html) {
+    console.error('Could not monkey-patch HTML format: not in prototype');
+  } else {
+    // move HTML insert to the beginning to allow to use it for jumping to definition
+    CSL.Output.Formats.html['@bibliography/entry'] = function (
+      state: any,
+      str: string
+    ) {
+      let insert = '';
+      if (state.sys.embedBibliographyEntry) {
+        insert = state.sys.embedBibliographyEntry(this.item_id);
+      }
+      return '  <div class="csl-entry">' + insert + str + '</div>\n';
+    };
   }
 }
 
