@@ -155,11 +155,21 @@ jobs:
           pip install extension.tar.gz
           pip install jupyterlab~=3.0
 
-      - name: Run UI tests
+      - name: Prepare for UI tests
         run: |
           jlpm
           jlpm install:browser
           jlpm start-jlab:detached
+        working-directory: ui-tests
+
+      - name: Wait for JupyterLab
+        uses: ifaxity/wait-on-action@31409304f67f28ae9559d3646ac9b59f78c6f0ba
+        with:
+          resource: http-get://localhost:8888/lab
+          timeout: 360000
+
+      - name: Run UI tests
+        run: |
           jlpm run test
         working-directory: ui-tests
 
