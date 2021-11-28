@@ -17,6 +17,13 @@ test.use({
   }
 });
 
+// prevent flake from blinking cursor
+const hideBlinkingCursorStyle = `
+input.cm-SearchField {
+  caret-color: transparent;
+}
+`;
+
 
 test.describe('Citation styles support', () => {
   test.beforeEach(async ({ page}) => {
@@ -39,6 +46,8 @@ test.describe('Citation styles support', () => {
 
     const stylesSelector = page.locator(STYLES_SELECTOR);
     await stylesSelector.waitFor();
+
+    await page.addStyleTag({ content: hideBlinkingCursorStyle });
 
     const input = stylesSelector.locator('input.cm-SearchField');
     await input.type('Nature', {delay: 0});

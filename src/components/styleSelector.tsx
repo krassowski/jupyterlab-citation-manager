@@ -113,7 +113,9 @@ const styleOptionModel = {
           scoreOrFallback(b.match?.shortTitle, b.match?.title)
         ) ||
       InfinityIfMissing(a.match?.title?.score) -
-        InfinityIfMissing(b.match?.title?.score)
+        InfinityIfMissing(b.match?.title?.score) ||
+      // fallback to alphabetical sorting for equally good matches
+      b.data.style.info.title.localeCompare(a.data.style.info.title)
     );
   }
 };
