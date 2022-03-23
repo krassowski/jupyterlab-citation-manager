@@ -36,7 +36,14 @@ export type CitationToInsert = {
 
 export interface ICitationFormattingOptions {
   defaultFormat: OutputMode;
+  /**
+   * Whether citations should link to bibliography (if output mode supports it)
+   */
   linkToBibliography: boolean;
+  /**
+   * Whether links and DOIs in bibliography should be clickable (if the output mode supports it)
+   */
+  hyperlinksInBibliography: boolean;
 }
 
 /**
