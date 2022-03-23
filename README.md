@@ -108,7 +108,7 @@ To configure notebook to export citations to LaTeX:
 
 ## Requirements
 
-* JupyterLab >= 3.2
+* JupyterLab >= 3.3
 * Modern browser (with ES 2019 support, e.g. Firefox 64+, or Chrome 73+)
 * [Zotero account](https://www.zotero.org/user/register)
 
