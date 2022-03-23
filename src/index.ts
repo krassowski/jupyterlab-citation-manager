@@ -147,7 +147,8 @@ class UnifiedCitationManager implements ICitationManager {
   private currentAdapter: IDocumentAdapter<any> | null = null;
   private formattingOptions: ICitationFormattingOptions = {
     defaultFormat: 'html',
-    linkToBibliography: true
+    linkToBibliography: true,
+    hyperlinksInBibliography: true
   };
 
   protected createAllReadyPromiseWrapper(): ICancellablePromise<any> {
@@ -537,6 +538,9 @@ class UnifiedCitationManager implements ICitationManager {
     this.formattingOptions.linkToBibliography = settings.get(
       'linkToBibliography'
     ).composite as boolean;
+    this.formattingOptions.hyperlinksInBibliography = settings.get(
+      'hyperlinksInBibliography'
+    ).composite as boolean;
     // refresh if needed
     const currentPanel = this.notebookTracker.currentWidget;
     if (currentPanel) {
@@ -886,7 +890,8 @@ class UnifiedCitationManager implements ICitationManager {
       .then((engine: CiteProc.IEngine) => {
         monkeyPatchCiteProc();
         engine.setOutputFormat(formatID as OutputMode);
-        // engine.opt.development_extensions.apply_citation_wrapper = true;
+        engine.opt.development_extensions.wrap_url_and_doi =
+          this.formattingOptions.hyperlinksInBibliography;
         return engine;
       });
   }

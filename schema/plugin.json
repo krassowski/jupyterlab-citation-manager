@@ -39,6 +39,12 @@
       "default": true,
       "description": "Should citations link to the bibliography? Only available for HTML output format."
     },
+    "hyperlinksInBibliography": {
+      "title": "Hyperlinks in bibliography",
+      "type": "boolean",
+      "default": true,
+      "description": "Whether links and DOIs in bibliography should be clickable (if the output format supports it)."
+    },
     "outputFormat": {
       "title": "The default format of citations and bibliography",
       "type": "string",
