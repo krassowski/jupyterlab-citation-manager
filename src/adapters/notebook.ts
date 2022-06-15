@@ -175,7 +175,10 @@ export class NotebookAdapter implements IDocumentAdapter<NotebookPanel> {
       // link to the first mentioned element
       const first = citation.items[0];
       const firstID = itemIdToPrimitive(first);
-      text = `<a href="#${firstID}">${text}</a>`;
+      // encode the link as pipe symbol was causing issues with markdown tables,
+      // see https://github.com/krassowski/jupyterlab-citation-manager/issues/50
+      const encodedfirstID = encodeURIComponent(firstID);
+      text = `<a href="#${encodedfirstID}">${text}</a>`;
     } else if (this.outputFormat === 'latex') {
       // this does not work well with MathJax - we need to figure out something else!
       // but it might still be useful (without $) for text editor adapter
