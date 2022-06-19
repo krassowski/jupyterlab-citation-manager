@@ -19,7 +19,8 @@ import {
   TranslationBundle
 } from '@jupyterlab/translation';
 import { NotebookAdapter } from '../adapters/notebook';
-import { extractCitations, markdownCells } from '../utils';
+import { markdownCells } from '../utils';
+import { HTMLFormatter } from '../formatting';
 import { ReadonlyPartialJSONObject } from '@lumino/coreutils';
 import { NotebookPanel } from '@jupyterlab/notebook';
 
@@ -132,8 +133,13 @@ class Cite2CFormat implements IAlternativeFormat<NotebookPanel> {
       )
     );
 
+    const formatter = new HTMLFormatter({
+      defaultFormat: 'html',
+      linkToBibliography: false,
+      hyperlinksInBibliography: false
+    })
     markdownCells(document).forEach(cell => {
-      const citationsInCell = extractCitations(
+      const citationsInCell = formatter.extractCitations(
         cell.model.value.text,
         {
           host: cell.node

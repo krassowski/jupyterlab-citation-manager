@@ -68,6 +68,7 @@
     "@jupyterlab/builder": "^3.0.0",
     "@jupyterlab/cells": "^3.0.0",
     "@jupyterlab/docregistry": "^3.0.11",
+    "@jupyterlab/fileeditor": "^3.0.11",
     "@jupyterlab/notebook": "^3.0.11",
     "@jupyterlab/statedb": "^3.0.6",
     "@jupyterlab/statusbar": "^3.0.9",

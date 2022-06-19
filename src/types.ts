@@ -35,6 +35,7 @@ export type CitationToInsert = {
 };
 
 export interface ICitationFormattingOptions {
+  // TODO: remove from here?
   defaultFormat: OutputMode;
   /**
    * Whether citations should link to bibliography (if output mode supports it)
@@ -312,11 +313,10 @@ export interface IAlternativeFormat<T extends IDocumentWidget> {
 }
 
 export interface IDocumentAdapter<T extends IDocumentWidget> {
-  /**
-   * Insert citation at current position.
-   */
   citations: ICitation[];
   document: T;
+
+  isAvailable(): boolean;
 
   /**
    * Use getter to read it from metadata, and setter to set it to metadata.
@@ -326,9 +326,14 @@ export interface IDocumentAdapter<T extends IDocumentWidget> {
 
   outputFormat: OutputMode;
 
+  /**
+   * Insert citation at current cursor (caret) position.
+   */
   insertCitation(citation: CitationInsertData): void;
   updateCitation(citation: CitationInsertData): void;
-
+  /**
+   * Insert bibliography at current cursor (caret) position.
+   */
   insertBibliography(bibliography: string): void;
   updateBibliography(bibliography: string): void;
 
