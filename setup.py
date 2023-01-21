@@ -43,7 +43,6 @@ long_description = (HERE / "README.md").read_text()
 pkg_json = json.loads((HERE / "package.json").read_bytes())
 
 setup_args = dict(
-    name=name,
     version=pkg_json["version"],
     url=pkg_json["homepage"],
     author=pkg_json["author"]["name"],
@@ -97,4 +96,7 @@ except ImportError as e:
         raise e
 
 if __name__ == "__main__":
-    setuptools.setup(**setup_args)
+    setuptools.setup(
+        name='jupyterlab-citation-manager',
+        **setup_args
+    )
