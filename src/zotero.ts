@@ -392,7 +392,7 @@ export class ZoteroClient implements IReferenceProvider {
           new URLSearchParams(new URL(next).search).entries()
         );
         if (nextParams.start) {
-          i += parseInt(nextParams.start, 10);
+          i = parseInt(nextParams.start, 10);
           if (progress) {
             progress((100 * i) / total);
           }
