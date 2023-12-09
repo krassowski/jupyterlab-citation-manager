@@ -275,7 +275,7 @@ class UnifiedCitationManager implements ICitationManager {
           if (result.aborted) {
             await showErrorMessage(
               this.trans.__('Migration from %1 failed', format.name),
-              result.message
+              result.message ?? 'No message'
             );
           }
           if (result.failures.length !== 0) {
@@ -699,7 +699,6 @@ class UnifiedCitationManager implements ICitationManager {
         citableItems.set(item.source, itemsSet.add(item.id));
       }
     }
-    console.log(citableItems);
     adapter.setCitableItemsFallbackData(
       Object.fromEntries(
         [...citableItems.entries()].map(([source, items]) => {
@@ -840,7 +839,7 @@ class UnifiedCitationManager implements ICitationManager {
         (originallyFocusedElement as HTMLElement)?.focus();
       } else {
         // if nothing was focused, focus the active cell
-        content.content.widgets[content.content.activeCellIndex].editor.focus();
+        content.content.activeCell?.editor?.focus();
       }
     }, 0);
   }

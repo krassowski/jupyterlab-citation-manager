@@ -46,7 +46,7 @@ export async function simpleRequest(
   });
 }
 
-export class DefaultMap<K extends string | number | boolean, V extends any> {
+export class DefaultMap<K extends string | number | boolean, V> {
   private map: Map<K, V>;
 
   constructor(protected factory: (key: K) => V) {

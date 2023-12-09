@@ -1,6 +1,5 @@
 {
   "compilerOptions": {
-    "allowJs": true,
     "allowSyntheticDefaultImports": true,
     "composite": true,
     "declaration": true,
@@ -18,8 +17,7 @@
     "rootDir": "src",
     "strict": true,
     "strictNullChecks": true,
-    "target": "es2019",
-    "types": []
+    "target": "ES2019"
   },
   "include": ["src/*", "src/*/*"]
 }

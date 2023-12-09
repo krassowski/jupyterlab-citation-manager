@@ -73,11 +73,11 @@ export class NotebookAdapter implements IDocumentAdapter<NotebookPanel> {
 
   private insertAtCursor(text: string) {
     const activeCell = this.document.content.activeCell;
-    if (activeCell) {
+    if (activeCell && activeCell.editor) {
       const cursor = activeCell.editor.getCursorPosition();
       const offset = activeCell.editor.getOffsetAt(cursor);
       const editor = activeCell.editor;
-      activeCell.model.value.insert(offset, text);
+      activeCell.model.sharedModel.updateSource(offset, offset, text);
       const updatedPosition = editor.getPositionAt(offset + text.length);
       if (updatedPosition) {
         editor.setCursorPosition(updatedPosition);
@@ -91,7 +91,7 @@ export class NotebookAdapter implements IDocumentAdapter<NotebookPanel> {
     if (!this.document.model) {
       return;
     }
-    return this.document.model.metadata.get(
+    return this.document.model.getMetadata(
       'citation-manager'
     ) as NotebookAdapter.INotebookMetadata;
   }
@@ -126,7 +126,7 @@ export class NotebookAdapter implements IDocumentAdapter<NotebookPanel> {
     for (const [key, value] of Object.entries(update)) {
       merged[key] = value;
     }
-    this.document.model.metadata.set(notebookMetadataKey, merged);
+    this.document.model.setMetadata(notebookMetadataKey, merged);
   }
 
   getCitationStyle(): string | undefined {
@@ -160,7 +160,7 @@ export class NotebookAdapter implements IDocumentAdapter<NotebookPanel> {
   }
 
   formatBibliography(bibliography: string): string {
-    console.log('format', this.outputFormat);
+    console.debug('format', this.outputFormat);
     if (this.outputFormat === 'latex') {
       return bibliography;
     }
@@ -195,8 +195,8 @@ export class NotebookAdapter implements IDocumentAdapter<NotebookPanel> {
       return;
     }
     const old =
-      (activeCell.model.metadata.get(cellMetadataKey) as ICellMetadata) || {};
-    activeCell.model.metadata.set(cellMetadataKey, {
+      (activeCell.model.getMetadata(cellMetadataKey) as ICellMetadata) || {};
+    activeCell.model.setMetadata(cellMetadataKey, {
       citations: {
         ...old.citations,
         ...{ [citation.citationId]: citation.items }
@@ -210,16 +210,17 @@ export class NotebookAdapter implements IDocumentAdapter<NotebookPanel> {
     );
     let matches = 0;
     this.nonCodeCells.forEach(cell => {
-      const oldText = cell.model.value.text;
+      const oldText = cell.model.sharedModel.getSource();
       const matchIndex = oldText.search(pattern);
       if (matchIndex !== -1) {
         const newCitation = this.formatCitation(citation);
         const old = oldText.slice(matchIndex, matchIndex + newCitation.length);
         if (newCitation !== old) {
-          cell.model.value.text = oldText.replace(
+          const newValue = oldText.replace(
             pattern,
             this.formatCitation(citation)
           );
+          cell.model.sharedModel.setSource(newValue);
         }
         matches += 1;
       }
@@ -244,14 +245,15 @@ export class NotebookAdapter implements IDocumentAdapter<NotebookPanel> {
       /(\\begin{thebibliography}[\s\S]*?\\end{thebibliography})/;
 
     this.nonCodeCells.forEach(cell => {
-      const oldText = cell.model.value.text;
+      const oldText = cell.model.sharedModel.getSource();
       if (oldText.match(/<!-- BIBLIOGRAPHY START -->/)) {
-        cell.model.value.text = oldText.replace(
+        const newValue = oldText.replace(
           this.outputFormat === 'latex'
             ? htmlFullyCapturingPattern
             : htmlPattern,
           this.outputFormat === 'latex' ? bibliography.trim() : bibliography
         );
+        cell.model.sharedModel.setSource(newValue);
         if (oldText.search(htmlPattern) === -1) {
           console.warn(
             'Failed to update bibliography',
@@ -261,12 +263,13 @@ export class NotebookAdapter implements IDocumentAdapter<NotebookPanel> {
           );
         }
       } else if (oldText.match(/\\begin{thebibliography}/)) {
-        cell.model.value.text = oldText.replace(
+        const newValue = oldText.replace(
           latexPattern,
           this.outputFormat !== 'latex'
             ? this.formatBibliography(bibliography)
             : bibliography.trim()
         );
+        cell.model.sharedModel.setSource(newValue);
         if (oldText.search(latexPattern) === -1) {
           console.warn(
             'Failed to update bibliography',
@@ -302,11 +305,11 @@ export class NotebookAdapter implements IDocumentAdapter<NotebookPanel> {
 
     for (const cell of this.chooseCells(subset)) {
       // TODO: subset >within< cell! (also always include the current cell in chooseCells)
-      const cellMetadata = cell.model.metadata.get(cellMetadataKey) as
+      const cellMetadata = cell.model.getMetadata(cellMetadataKey) as
         | NotebookAdapter.ICellMetadata
         | undefined;
       const cellCitations = extractCitations(
-        cell.model.value.text,
+        cell.model.sharedModel.getSource(),
         {
           host: cell.node
         },
@@ -329,9 +332,9 @@ export class NotebookAdapter implements IDocumentAdapter<NotebookPanel> {
   protected updateCellMetadata(): void {
     for (const { cell, cellCitations } of this.iterateCitationsByCell('all')) {
       if (cellCitations.length === 0) {
-        cell.model.metadata.delete(cellMetadataKey);
+        cell.model.deleteMetadata(cellMetadataKey);
       } else {
-        cell.model.metadata.set(cellMetadataKey, {
+        cell.model.setMetadata(cellMetadataKey, {
           citations: Object.fromEntries(
             cellCitations.map(citation => [citation.citationId, citation.items])
           )
@@ -357,7 +360,7 @@ export class NotebookAdapter implements IDocumentAdapter<NotebookPanel> {
   }
 
   addCitationMetadata(cell: Cell, citationsInCell: ICitation[]): void {
-    let metadata: ICellMetadata = cell.model.metadata.get(
+    let metadata: ICellMetadata = cell.model.getMetadata(
       cellMetadataKey
     ) as ICellMetadata;
     if (!metadata) {
@@ -366,7 +369,7 @@ export class NotebookAdapter implements IDocumentAdapter<NotebookPanel> {
     for (const citation of citationsInCell) {
       metadata['citations'][citation.citationId] = citation.items;
     }
-    cell.model.metadata.set(cellMetadataKey, metadata);
+    cell.model.setMetadata(cellMetadataKey, metadata);
   }
 }
 

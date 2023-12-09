@@ -66,7 +66,7 @@ class MarkdownDOIFormat implements IAlternativeFormat<NotebookPanel> {
       bibliographiesDetected: 0
     };
     markdownCells(document).map(cell => {
-      const text = cell.model.value.text;
+      const text = cell.model.sharedModel.getSource();
       const citationMatches = text.match(this.catchAllPattern);
       result.citationsDetected += citationMatches ? citationMatches.length : 0;
     });
@@ -92,7 +92,7 @@ class MarkdownDOIFormat implements IAlternativeFormat<NotebookPanel> {
       ...adapter.citations.map(citation => citation.citationId)
     );
     for (const cell of markdownCells(document)) {
-      let text = cell.model.value.text;
+      let text = cell.model.sharedModel.getSource();
       // TODO: use marked.js to extract URLs instead? This would be more robust
       const matchesInCell = text.match(this.catchAllPattern);
       const matchesCount = matchesInCell ? matchesInCell.length : 0;
@@ -151,7 +151,7 @@ class MarkdownDOIFormat implements IAlternativeFormat<NotebookPanel> {
           );
         }
       }
-      cell.model.value.text = text;
+      cell.model.sharedModel.setSource(text);
       const matchesAfterCount = (text.match(this.catchAllPattern) || []).length;
       if (matchesAfterCount !== 0) {
         result.failures.push(
