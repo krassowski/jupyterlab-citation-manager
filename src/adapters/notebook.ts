@@ -15,13 +15,12 @@ import type { INotebookModel, NotebookPanel } from '@jupyterlab/notebook';
 import { DocumentRegistry } from '@jupyterlab/docregistry';
 import { DisposableDelegate, IDisposable } from '@lumino/disposable';
 import { CommandToolbarButton } from '@jupyterlab/apputils';
-import { extractCitations } from '../utils';
 import { JupyterFrontEnd } from '@jupyterlab/application';
 import { ReadonlyPartialJSONObject } from '@lumino/coreutils';
 import ICellMetadata = NotebookAdapter.ICellMetadata;
 import type { Cell } from '@jupyterlab/cells';
 import OutputMode = CiteProc.OutputMode;
-import { itemIdToPrimitive } from '../index';
+import { HTMLFormatter, HybridFormatter, IOutputFormatter } from '../formatting';
 
 export namespace NotebookAdapter {
   export interface INotebookMetadata extends ReadonlyPartialJSONObject {
@@ -50,6 +49,7 @@ export namespace NotebookAdapter {
 export const notebookMetadataKey = 'citation-manager';
 export const cellMetadataKey = 'citation-manager';
 
+
 export class NotebookAdapter implements IDocumentAdapter<NotebookPanel> {
   citations: ICitation[];
 
@@ -71,12 +71,16 @@ export class NotebookAdapter implements IDocumentAdapter<NotebookPanel> {
     this.updateCellMetadata();
   }
 
+  isAvailable(): boolean {
+    return true;
+  }
+
   private insertAtCursor(text: string) {
     const activeCell = this.document.content.activeCell;
     if (activeCell) {
-      const cursor = activeCell.editor.getCursorPosition();
-      const offset = activeCell.editor.getOffsetAt(cursor);
       const editor = activeCell.editor;
+      const cursor = editor.getCursorPosition();
+      const offset = editor.getOffsetAt(cursor);
       activeCell.model.value.insert(offset, text);
       const updatedPosition = editor.getPositionAt(offset + text.length);
       if (updatedPosition) {
@@ -155,37 +159,23 @@ export class NotebookAdapter implements IDocumentAdapter<NotebookPanel> {
     });
   }
 
+  protected get formatter(): IOutputFormatter {
+    if (this.outputFormat === 'latex') {
+      return new HybridFormatter(this.options);
+    }
+    return new HTMLFormatter(this.options);
+  }
+
   insertBibliography(bibliography: string): void {
     this.insertAtCursor(this.formatBibliography(bibliography));
   }
 
   formatBibliography(bibliography: string): string {
-    console.log('format', this.outputFormat);
-    if (this.outputFormat === 'latex') {
-      return bibliography;
-    }
-    return `<!-- BIBLIOGRAPHY START -->${bibliography}<!-- BIBLIOGRAPHY END -->`;
+    return this.formatter.formatBibliography(bibliography)
   }
 
   formatCitation(citation: CitationInsertData): string {
-    // note: not using `wrapCitationEntry` as that was causing more problems
-    // (itemID undefined).
-    let text = citation.text;
-    if (this.outputFormat === 'html' && this.options.linkToBibliography) {
-      // link to the first mentioned element
-      const first = citation.items[0];
-      const firstID = itemIdToPrimitive(first);
-      // encode the link as pipe symbol was causing issues with markdown tables,
-      // see https://github.com/krassowski/jupyterlab-citation-manager/issues/50
-      const encodedfirstID = encodeURIComponent(firstID);
-      text = `<a href="#${encodedfirstID}">${text}</a>`;
-    } else if (this.outputFormat === 'latex') {
-      // this does not work well with MathJax - we need to figure out something else!
-      // but it might still be useful (without $) for text editor adapter
-      // const citationIDs = citation.items.map(itemIdToPrimitive).join(',');
-      // text = `$$\\cite{${citationIDs}}$$`;
-    }
-    return `<cite id="${citation.citationId}">${text}</cite>`;
+    return this.formatter.formatCitation(citation)
   }
 
   insertCitation(citation: CitationInsertData): void {
@@ -194,6 +184,7 @@ export class NotebookAdapter implements IDocumentAdapter<NotebookPanel> {
     if (!activeCell) {
       return;
     }
+    // TODO: maybe store current citations in metadata (how?)
     const old =
       (activeCell.model.metadata.get(cellMetadataKey) as ICellMetadata) || {};
     activeCell.model.metadata.set(cellMetadataKey, {
@@ -205,23 +196,16 @@ export class NotebookAdapter implements IDocumentAdapter<NotebookPanel> {
   }
 
   updateCitation(citation: ICitation): void {
-    const pattern = new RegExp(
-      `<cite id=["']${citation.citationId}["'][^>]*?>([\\s\\S]*?)<\\/cite>`
-    );
     let matches = 0;
     this.nonCodeCells.forEach(cell => {
       const oldText = cell.model.value.text;
-      const matchIndex = oldText.search(pattern);
-      if (matchIndex !== -1) {
-        const newCitation = this.formatCitation(citation);
-        const old = oldText.slice(matchIndex, matchIndex + newCitation.length);
-        if (newCitation !== old) {
-          cell.model.value.text = oldText.replace(
-            pattern,
-            this.formatCitation(citation)
-          );
-        }
-        matches += 1;
+      const { newText, matchesCount } = this.formatter.updateCitation(
+        oldText,
+        citation
+      )
+      matches += matchesCount;
+      if (newText != null) {
+        cell.model.value.text = newText;
       }
     });
     if (matches === 0) {
@@ -236,45 +220,13 @@ export class NotebookAdapter implements IDocumentAdapter<NotebookPanel> {
   }
 
   updateBibliography(bibliography: string): void {
-    const htmlPattern =
-      /(?<=<!-- BIBLIOGRAPHY START -->)([\s\S]*?)(?=<!-- BIBLIOGRAPHY END -->)/;
-    const htmlFullyCapturingPattern =
-      /(<!-- BIBLIOGRAPHY START -->[\s\S]*?<!-- BIBLIOGRAPHY END -->)/;
-    const latexPattern =
-      /(\\begin{thebibliography}[\s\S]*?\\end{thebibliography})/;
-
     this.nonCodeCells.forEach(cell => {
-      const oldText = cell.model.value.text;
-      if (oldText.match(/<!-- BIBLIOGRAPHY START -->/)) {
-        cell.model.value.text = oldText.replace(
-          this.outputFormat === 'latex'
-            ? htmlFullyCapturingPattern
-            : htmlPattern,
-          this.outputFormat === 'latex' ? bibliography.trim() : bibliography
-        );
-        if (oldText.search(htmlPattern) === -1) {
-          console.warn(
-            'Failed to update bibliography',
-            bibliography,
-            'in',
-            oldText
-          );
-        }
-      } else if (oldText.match(/\\begin{thebibliography}/)) {
-        cell.model.value.text = oldText.replace(
-          latexPattern,
-          this.outputFormat !== 'latex'
-            ? this.formatBibliography(bibliography)
-            : bibliography.trim()
-        );
-        if (oldText.search(latexPattern) === -1) {
-          console.warn(
-            'Failed to update bibliography',
-            bibliography,
-            'in',
-            oldText
-          );
-        }
+      const newText = this.formatter.updateBibliography(
+        cell.model.value.text,
+        bibliography
+      );
+      if (newText != null) {
+        cell.model.value.text = newText;
       }
     });
   }
@@ -305,7 +257,7 @@ export class NotebookAdapter implements IDocumentAdapter<NotebookPanel> {
       const cellMetadata = cell.model.metadata.get(cellMetadataKey) as
         | NotebookAdapter.ICellMetadata
         | undefined;
-      const cellCitations = extractCitations(
+      const cellCitations = this.formatter.extractCitations(
         cell.model.value.text,
         {
           host: cell.node

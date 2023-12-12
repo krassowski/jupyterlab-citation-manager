@@ -19,6 +19,21 @@
       "command": "cm:update-references",
       "keys": ["Alt U"],
       "selector": ".jp-Notebook"
+    },
+    {
+      "command": "cm:insert-citation",
+      "keys": ["Alt C"],
+      "selector": ".jp-FileEditor"
+    },
+    {
+      "command": "cm:insert-bibliography",
+      "keys": ["Alt B"],
+      "selector": ".jp-FileEditor"
+    },
+    {
+      "command": "cm:update-references",
+      "keys": ["Alt U"],
+      "selector": ".jp-FileEditor"
     }
   ],
   "jupyter.lab.setting-icon": "citation:bibliography",

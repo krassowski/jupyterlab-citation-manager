@@ -4,10 +4,10 @@ import {
   JupyterFrontEnd,
   JupyterFrontEndPlugin
 } from '@jupyterlab/application';
-
+import { IWidgetTracker } from '@jupyterlab/apputils';
+import { IEditorTracker } from '@jupyterlab/fileeditor';
 import { ISettingRegistry } from '@jupyterlab/settingregistry';
 import { INotebookTracker, NotebookPanel } from '@jupyterlab/notebook';
-import { DocumentWidget } from '@jupyterlab/docregistry';
 import { Debouncer } from '@lumino/polling';
 import {
   CommandIDs,
@@ -47,6 +47,7 @@ import {
   TranslationBundle
 } from '@jupyterlab/translation';
 import { NotebookAdapter, NotebookButtons } from './adapters/notebook';
+import { EditorAdapter } from './adapters/editor';
 import {
   Dialog,
   ICommandPalette,
@@ -54,6 +55,7 @@ import {
   showDialog,
   showErrorMessage
 } from '@jupyterlab/apputils';
+import { FileEditor } from '@jupyterlab/fileeditor';
 import { fetchAPI, requestAPI } from './handler';
 import { StyleSelector } from './components/styleSelector';
 import {
@@ -75,6 +77,16 @@ import { markdownDOIPlugin } from './formats/markdownDOI';
 import getItem = InputDialog.getItem;
 import { NameVariable } from './_csl_data';
 import { migrationDialog } from './components/dialogs';
+
+import { IDocumentWidget } from '@jupyterlab/docregistry';
+
+
+type FileEditorWidget = IDocumentWidget<FileEditor>;
+type SupportedDocumentWidget = FileEditorWidget | NotebookPanel;
+
+function isNotebookPanel(documentWidget: any): documentWidget is NotebookPanel {
+  return typeof (documentWidget as NotebookPanel).content.activeCellIndex !== 'undefined'
+}
 
 const PLUGIN_ID = 'jupyterlab-citation-manager:plugin';
 
@@ -133,10 +145,10 @@ export function itemIdToPrimitive(item: IUnambiguousItemIdentifier): string {
 
 class UnifiedCitationManager implements ICitationManager {
   private providers: Map<string, IReferenceProvider>;
-  private adapters: WeakMap<DocumentWidget, IDocumentAdapter<DocumentWidget>>;
+  private adapters: WeakMap<SupportedDocumentWidget, IDocumentAdapter<SupportedDocumentWidget>>;
   private selector: CitationSelector;
   private styles: StylesManager;
-  private processors: WeakMap<DocumentWidget, Promise<CiteProc.IEngine>>;
+  private processors: WeakMap<SupportedDocumentWidget, Promise<CiteProc.IEngine>>;
   private localeCache: Map<string, string>;
   private updateInProgress = false;
   protected defaultStyleID = 'apa.csl';
@@ -185,6 +197,7 @@ class UnifiedCitationManager implements ICitationManager {
 
   constructor(
     protected notebookTracker: INotebookTracker,
+    protected editorTracker: IEditorTracker | null,
     settingsRegistry: ISettingRegistry | null,
     protected trans: TranslationBundle,
     protected referenceBrowser: ReferenceBrowser
@@ -197,43 +210,56 @@ class UnifiedCitationManager implements ICitationManager {
     this.adapters = new WeakMap();
     this.processors = new WeakMap();
     this.localeCache = new Map();
+    const trackers: (INotebookTracker | IEditorTracker)[] = [notebookTracker];
+    if (editorTracker) {
+      trackers.push(editorTracker);
+    }
     // TODO generalize to allow use in Markdown Editor too
-    notebookTracker.currentChanged.connect(async (tracker, panel) => {
-      if (!panel) {
-        return;
-      }
-      await this.createAllReadyPromiseWrapper().promise;
-      this.processFromScratch(panel).catch(console.warn);
-    });
-
-    notebookTracker.widgetAdded.connect((tracker, panel) => {
-      const debouncedUpdate = new Debouncer(async () => {
-        await this.createAllReadyPromiseWrapper().promise;
-        this.processFromScratch(panel).catch(console.warn);
-        // TODO: hoist debounce rate to settings
-      }, 1500);
-
-      panel.content.modelContentChanged.connect(() => {
-        debouncedUpdate.invoke().catch(console.warn);
-      });
-
-      panel.context.ready.then(() => {
-        this.offerMigration(panel).catch(console.warn);
-      });
-
-      panel.context.saveState.connect((sender, state) => {
-        if (state === 'started') {
-          this.beforeSave(panel);
+    for (let tracker of trackers) {
+      tracker.currentChanged.connect(async (tracker: any, documentWidget: SupportedDocumentWidget | null) => {
+        if (!documentWidget) {
+          return;
         }
+        await this.createAllReadyPromiseWrapper().promise;
+        this.processFromScratch(documentWidget).catch(console.warn);
       });
-    });
-    notebookTracker.currentChanged.connect((tracker, panel) => {
-      if (!panel) {
-        return;
-      }
-      this.currentAdapter = this.getAdapter(panel);
-      this.updateReferenceBrowser(this.currentAdapter);
-    });
+
+      tracker.widgetAdded.connect((tracker: any, documentWidget: SupportedDocumentWidget) => {
+        const debouncedUpdate = new Debouncer(async () => {
+          await this.createAllReadyPromiseWrapper().promise;
+          this.processFromScratch(documentWidget).catch(console.warn);
+          // TODO: hoist debounce rate to settings
+        }, 1500);
+
+        if (isNotebookPanel(documentWidget)) {
+          documentWidget.content.modelContentChanged.connect(() => {
+            debouncedUpdate.invoke().catch(console.warn);
+          });
+        } else {
+          // TODO can we use that for panel too?
+          documentWidget.context.model.contentChanged.connect(() => {
+            debouncedUpdate.invoke().catch(console.warn);
+          });
+        }
+
+        documentWidget.context.ready.then(() => {
+          this.offerMigration(documentWidget).catch(console.warn);
+        });
+
+        documentWidget.context.saveState.connect((sender, state) => {
+          if (state === 'started') {
+            this.beforeSave(documentWidget);
+          }
+        });
+      });
+      tracker.currentChanged.connect((tracker: any, documentWidget: SupportedDocumentWidget | null) => {
+        if (!documentWidget) {
+          return;
+        }
+        this.currentAdapter = this.getAdapter(documentWidget);
+        this.updateReferenceBrowser(this.currentAdapter);
+      });
+    }
     this.providers = new Map();
     if (settingsRegistry) {
       settingsRegistry.load(PLUGIN_ID).then(settings => {
@@ -256,10 +282,11 @@ class UnifiedCitationManager implements ICitationManager {
     }
   }
 
-  async offerMigration(panel: NotebookPanel) {
-    const adapter = this.getAdapter(panel);
+  async offerMigration(documentWidget: SupportedDocumentWidget) {
+    const adapter = this.getAdapter(documentWidget);
     for (const format of this.formats) {
-      const detectionResult = format.detect(panel, adapter);
+      // TODO: this will fail for editor currently
+      const detectionResult = format.detect(documentWidget, adapter);
       if (
         detectionResult.citationsDetected !== 0 ||
         detectionResult.bibliographiesDetected !== 0
@@ -267,11 +294,11 @@ class UnifiedCitationManager implements ICitationManager {
         const decision = await migrationDialog(
           format,
           detectionResult,
-          panel.context.path,
+          documentWidget.context.path,
           this.trans
         );
         if (decision.button.accept) {
-          const result = await format.migrateFrom(panel, adapter, this);
+          const result = await format.migrateFrom(documentWidget, adapter, this);
           if (result.aborted) {
             await showErrorMessage(
               this.trans.__('Migration from %1 failed', format.name),
@@ -293,7 +320,7 @@ class UnifiedCitationManager implements ICitationManager {
           console.log(
             `${result.migratedCitationsCount} citations migrated from ${format.name}`
           );
-          await this.processFromScratch(panel);
+          await this.processFromScratch(documentWidget);
         }
       }
     }
@@ -310,9 +337,9 @@ class UnifiedCitationManager implements ICitationManager {
         )
       } as IPreviewNotAvailable;
     }
-    const panel = this.notebookTracker.currentWidget;
+    const documentWidget = this.notebookTracker.currentWidget;
     // TODO: it would be good to show citation clusters if present
-    const citations = this.getAdapter(panel).citations.slice(0, maxCitations);
+    const citations = this.getAdapter(documentWidget).citations.slice(0, maxCitations);
     if (citations.length === 0) {
       throw {
         reason: this.trans.__(
@@ -478,7 +505,7 @@ class UnifiedCitationManager implements ICitationManager {
   }
 
   protected async processFromScratch(
-    panel: NotebookPanel,
+    documentWidget: SupportedDocumentWidget,
     styleId: string | undefined = undefined
   ) {
     const progressBase: Partial<IProgress> = {
@@ -488,12 +515,12 @@ class UnifiedCitationManager implements ICitationManager {
       )
     };
     this.progress.emit({ ...progressBase, state: 'started' });
-    const adapter = this.getAdapter(panel);
+    const adapter = this.getAdapter(documentWidget);
     if (!styleId) {
       styleId = adapter.getCitationStyle();
     }
-    const processor = this.createProcessor(styleId);
-    this.processors.set(panel, processor);
+    const processor = this.createProcessor(styleId, adapter.outputFormat);
+    this.processors.set(documentWidget, processor);
     adapter.citations = adapter.findCitations('all');
 
     const readyProcessor = await processor;
@@ -519,9 +546,9 @@ class UnifiedCitationManager implements ICitationManager {
 
   protected updateReferenceBrowser(adapter?: IDocumentAdapter<any>) {
     if (!adapter) {
-      const panel = this.notebookTracker.currentWidget;
-      if (panel) {
-        adapter = this.getAdapter(panel);
+      const documentWidget = this.notebookTracker.currentWidget;
+      if (documentWidget) {
+        adapter = this.getAdapter(documentWidget);
       }
     }
     const existingCitations = adapter ? adapter.citations : [];
@@ -542,10 +569,10 @@ class UnifiedCitationManager implements ICitationManager {
       'hyperlinksInBibliography'
     ).composite as boolean;
     // refresh if needed
-    const currentPanel = this.notebookTracker.currentWidget;
-    if (currentPanel) {
+    const currentDocumentWidget = this.notebookTracker.currentWidget;
+    if (currentDocumentWidget) {
       this.createAllReadyPromiseWrapper().promise.then(() => {
-        this.processFromScratch(currentPanel).catch(console.warn);
+        this.processFromScratch(currentDocumentWidget).catch(console.warn);
       });
     }
   }
@@ -658,10 +685,10 @@ class UnifiedCitationManager implements ICitationManager {
     return options;
   }
 
-  private getAdapter(content: NotebookPanel): IDocumentAdapter<any> {
+  private getAdapter(content: SupportedDocumentWidget): IDocumentAdapter<any> {
     let adapter = this.adapters.get(content);
     if (!adapter) {
-      adapter = new NotebookAdapter(content, this.formattingOptions);
+      adapter = isNotebookPanel(content) ? new NotebookAdapter(content, this.formattingOptions) : new EditorAdapter(content, this.formattingOptions);
       this.adapters.set(content, adapter);
       const initialStyle = adapter.getCitationStyle();
       this.processors.set(
@@ -671,8 +698,15 @@ class UnifiedCitationManager implements ICitationManager {
     }
     if (!adapter) {
       throw Error('This should not happen');
+    } else {
+      // ensure we have correct output format (in case if file extension was changed, etc).
+      this.processors.get(content)!.then(engine => engine.setOutputFormat(adapter!.outputFormat as OutputMode));
     }
     return adapter;
+  }
+
+  isSupported(documentWidget: SupportedDocumentWidget): boolean {
+    return this.getAdapter(documentWidget).isAvailable();
   }
 
   embedBibliographyEntry(itemID: string) {
@@ -689,7 +723,7 @@ class UnifiedCitationManager implements ICitationManager {
     return '';
   }
 
-  beforeSave(content: NotebookPanel) {
+  beforeSave(content: SupportedDocumentWidget) {
     const adapter = this.getAdapter(content);
     const citations = adapter.findCitations('all');
     const citableItems = new DefaultMap<string, Set<string>>(() => new Set());
@@ -720,7 +754,7 @@ class UnifiedCitationManager implements ICitationManager {
     );
   }
 
-  addCitation(content: NotebookPanel) {
+  addCitation(content: SupportedDocumentWidget) {
     const originallyFocusedElement = document.activeElement;
     const adapter = this.getAdapter(content);
     // TODO: remove
@@ -831,7 +865,7 @@ class UnifiedCitationManager implements ICitationManager {
   }
 
   private refocusWidget(
-    content: NotebookPanel,
+    content: SupportedDocumentWidget,
     originallyFocusedElement: Element | null
   ) {
     setTimeout(() => {
@@ -839,8 +873,13 @@ class UnifiedCitationManager implements ICitationManager {
         // TODO test
         (originallyFocusedElement as HTMLElement)?.focus();
       } else {
-        // if nothing was focused, focus the active cell
-        content.content.widgets[content.content.activeCellIndex].editor.focus();
+        // TODO move down to adapter as refocus() method?
+        if (isNotebookPanel(content)) {
+          // if nothing was focused, focus the active cell
+          content.content.widgets[content.content.activeCellIndex].editor.focus();
+        } else {
+          content.content.editor.focus();
+        }
       }
     }, 0);
   }
@@ -896,29 +935,29 @@ class UnifiedCitationManager implements ICitationManager {
       });
   }
 
-  async addBibliography(content: NotebookPanel) {
+  async addBibliography(documentWidget: SupportedDocumentWidget) {
     console.debug('Adding bibliography');
-    const adapter = this.getAdapter(content);
-    const processor = await this.processors.get(content);
+    const adapter = this.getAdapter(documentWidget);
+    const processor = await this.processors.get(documentWidget);
     if (!processor) {
-      console.warn('Could not find a processor for ', content);
+      console.warn('Could not find a processor for ', documentWidget);
       return;
     }
     const bibliography = processor.makeBibliography();
     adapter.insertBibliography(this.processBibliography(bibliography));
   }
 
-  changeStyle(content: NotebookPanel) {
+  changeStyle(documentWidget: SupportedDocumentWidget) {
     const originallyFocusedElement = document.activeElement;
     this.styles
       .selectStyle()
       .then(style => {
         console.log('selected style', style);
-        this.getAdapter(content).setCitationStyle(style.style.id);
-        this.processFromScratch(content, style.style.id).then(console.warn);
+        this.getAdapter(documentWidget).setCitationStyle(style.style.id);
+        this.processFromScratch(documentWidget, style.style.id).then(console.warn);
       })
       .finally(() => {
-        this.refocusWidget(content, originallyFocusedElement);
+        this.refocusWidget(documentWidget, originallyFocusedElement);
       });
   }
 
@@ -977,24 +1016,35 @@ class UnifiedCitationManager implements ICitationManager {
 function addCommands(
   app: JupyterFrontEnd,
   notebookTracker: INotebookTracker,
+  editorTracker: IEditorTracker | null,
   manager: UnifiedCitationManager,
   trans: TranslationBundle,
   commandPalette: ICommandPalette | null
 ) {
-  console.log('adding commands');
+  const supportedTrackers: IWidgetTracker[] = [notebookTracker];
+  if (editorTracker) {
+    supportedTrackers.push(editorTracker);
+  }
 
-  const hasPanel = () => {
-    const panel = notebookTracker.currentWidget;
-    return !!panel;
+  const isEnabled = () => {
+    const documentWidget = app.shell.currentWidget;
+    const supportedWidget = supportedTrackers.some(tracker => tracker.currentWidget == documentWidget);
+    if (supportedWidget && documentWidget) {
+      return manager.isSupported(documentWidget as SupportedDocumentWidget);
+    }
+    return false;
   };
-  const executeOnCurrent = (callback: (panel: NotebookPanel) => void) => {
+
+  const executeOnCurrent = (callback: (panel: SupportedDocumentWidget) => void) => {
     return () => {
-      const panel = notebookTracker.currentWidget;
-      if (!panel) {
-        console.warn('Panel not found for command');
+      const documentWidget = app.shell.currentWidget;
+      const isSupported = supportedTrackers.some(tracker => tracker.currentWidget == documentWidget)
+      if (documentWidget == null || !isSupported) {
+        console.warn('Supported document widget not found for command');
         return;
+      } else {
+        callback(documentWidget as SupportedDocumentWidget);
       }
-      callback(panel);
     };
   };
 
@@ -1004,7 +1054,7 @@ function addCommands(
       'Insert citation at the current cursor position in the active document.'
     ),
     execute: executeOnCurrent(manager.addCitation.bind(manager)),
-    isEnabled: hasPanel,
+    isEnabled: isEnabled,
     icon: addCitationIcon
   });
 
@@ -1014,7 +1064,7 @@ function addCommands(
       'Insert bibliography at the current cursor position in the active document.'
     ),
     execute: executeOnCurrent(manager.addBibliography.bind(manager)),
-    isEnabled: hasPanel,
+    isEnabled: isEnabled,
     icon: bibliographyIcon
   });
 
@@ -1022,7 +1072,7 @@ function addCommands(
     label: trans.__('Change bibliography style'),
     caption: trans.__('Change bibliography style for the active document.'),
     execute: executeOnCurrent(manager.changeStyle.bind(manager)),
-    isEnabled: hasPanel,
+    isEnabled: isEnabled,
     icon: paletteIcon
   });
 
@@ -1103,7 +1153,8 @@ const managerPlugin: JupyterFrontEndPlugin<ICitationManager> = {
     ITranslator,
     ICommandPalette,
     IStatusBar,
-    ILayoutRestorer
+    ILayoutRestorer,
+    IEditorTracker
   ],
   provides: ICitationManager,
   activate: (
@@ -1113,7 +1164,8 @@ const managerPlugin: JupyterFrontEndPlugin<ICitationManager> = {
     translator: ITranslator | null,
     commandPalette: ICommandPalette | null,
     statusBar: IStatusBar | null,
-    restorer: ILayoutRestorer | null
+    restorer: ILayoutRestorer | null,
+    editorTracker: IEditorTracker | null
   ) => {
     console.log('JupyterLab Citation Manager extension is activated!');
 
@@ -1124,12 +1176,13 @@ const managerPlugin: JupyterFrontEndPlugin<ICitationManager> = {
 
     const manager = new UnifiedCitationManager(
       notebookTracker,
+      editorTracker,
       settingRegistry,
       trans,
       referenceBrowser
     );
 
-    addCommands(app, notebookTracker, manager, trans, commandPalette);
+    addCommands(app, notebookTracker, editorTracker, manager, trans, commandPalette);
 
     if (statusBar) {
       statusBar.registerStatusItem(PLUGIN_ID, {

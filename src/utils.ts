@@ -1,11 +1,7 @@
 import {
   ICitableData,
-  ICitableWrapper,
-  ICitation,
-  ICitationContext,
-  ICitationMap
+  ICitableWrapper
 } from './types';
-import marked from 'marked';
 import { DateContentModel } from './_csl_citation';
 import { NotebookPanel } from '@jupyterlab/notebook';
 
@@ -78,58 +74,6 @@ export function markdownCells(document: NotebookPanel) {
   return document.content.widgets.filter(
     cell => cell.model.type === 'markdown'
   );
-}
-
-function extractText(node?: ChildNode | null): string {
-  return node ? node?.textContent || '' : '';
-}
-
-export function extractCitations(
-  markdown: string,
-  context: Partial<ICitationContext>,
-  citationToItems: ICitationMap
-): ICitation[] {
-  const html: string = marked(markdown);
-  const div = document.createElement('div');
-  div.innerHTML = html;
-  return [...div.querySelectorAll('cite').values()].map(element => {
-    const excerpt = {
-      before: extractText(element.previousSibling),
-      citation: element.innerHTML,
-      after: extractText(element.nextSibling)
-    };
-
-    let itemsIdentifiers =
-      citationToItems[
-        // fallback for cite2c
-        element.id ? element.id : (element.dataset.cite as string)
-      ];
-
-    // TODO delete this? standardize this?
-    if (!itemsIdentifiers) {
-      itemsIdentifiers = element.dataset.items
-        ? element.dataset.items.startsWith('[')
-          ? JSON.parse(element.dataset.items)
-          : [
-              {
-                source: element.dataset.source as string,
-                id: element.dataset.items
-              }
-            ]
-        : [];
-    }
-
-    return {
-      citationId: element.id,
-      items: itemsIdentifiers,
-      text: element.innerHTML,
-      data: element.dataset,
-      context: {
-        ...context,
-        excerpt: excerpt
-      }
-    } as ICitation;
-  });
 }
 
 function parseEDTF(date: string): Date {
