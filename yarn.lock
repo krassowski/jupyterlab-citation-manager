@@ -3280,10 +3280,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/marked@npm:^2.0.4":
-  version: 2.0.5
-  resolution: "@types/marked@npm:2.0.5"
-  checksum: 7a0b9d18402a0e20c106ec79ec9d4bd2266a4db409cc8b4ec322b68b40afd0bc67497e9b391bfbe953b934ad0810d90a1b88f7e18404ddf8cd6b085b74ba6893
+"@types/marked@npm:^4.0.10":
+  version: 4.3.2
+  resolution: "@types/marked@npm:4.3.2"
+  checksum: c1107079d6c368dd60a668a41aa2101d006cad404b6eb4af6723d419dc869b278928fb769825f11d0d311a8cf437428992729c8a47253b6a3894a6326b1ee4d9
   languageName: node
   linkType: hard
 
@@ -7433,7 +7433,7 @@ __metadata:
     "@lumino/widgets": ^2.0.1
     "@types/jest": ^29.2.0
     "@types/json-schema": ^7.0.11
-    "@types/marked": ^2.0.4
+    "@types/marked": ^4.0.10
     "@types/react": ^18.0.26
     "@types/react-addons-linked-state-mixin": ^0.14.22
     "@typescript-eslint/eslint-plugin": ^6.1.0

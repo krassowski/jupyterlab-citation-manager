@@ -5,7 +5,7 @@ import {
   ICitationContext,
   ICitationMap
 } from './types';
-import marked from 'marked';
+import { marked } from 'marked';
 import { DateContentModel } from './_csl_citation';
 import { NotebookPanel } from '@jupyterlab/notebook';
 
@@ -89,7 +89,7 @@ export function extractCitations(
   context: Partial<ICitationContext>,
   citationToItems: ICitationMap
 ): ICitation[] {
-  const html: string = marked(markdown);
+  const html: string = marked.parse(markdown);
   const div = document.createElement('div');
   div.innerHTML = html;
   return [...div.querySelectorAll('cite').values()].map(element => {
