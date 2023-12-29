@@ -41,7 +41,7 @@ test.describe('Citation styles support', () => {
     expect(await stylesSelector.screenshot()).toMatchSnapshot(imageName);
   });
 
-  test('find relevant styles', async ({ page }) => {
+  test('find relevant styles by long title', async ({ page }) => {
     await page.click(CHANGE_STYLE_BUTTON);
 
     const stylesSelector = page.locator(STYLES_SELECTOR);
@@ -58,13 +58,17 @@ test.describe('Citation styles support', () => {
 
     const imageNature = 'styles-selector:search-for-nature.png';
     expect(await stylesSelector.screenshot()).toMatchSnapshot(imageNature);
+  });
 
-    // remove "Nature"
-    for (const _letter of 'Nature') {
-      await input.press('Backspace');
-    }
+  test('find relevant styles by short title', async ({ page }) => {
+    await page.click(CHANGE_STYLE_BUTTON);
 
-    // test searching by short title:
+    const stylesSelector = page.locator(STYLES_SELECTOR);
+    await stylesSelector.waitFor();
+
+    await page.addStyleTag({ content: hideBlinkingCursorStyle });
+
+    const input = stylesSelector.locator('input.cm-SearchField');
     await input.type('APA', { delay: 0 });
     await stylesSelector
       .locator('.cm-Option:nth-child(1):has-text("APA")')
