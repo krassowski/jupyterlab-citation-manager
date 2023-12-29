@@ -9,6 +9,7 @@
 Feedback on any aspect of this extension is welcome.
 
 Citation Manager for JupyterLab:
+
 - enables adding citations to Jupyter notebooks in Markdown cells,
 - keeps the bibliography in sync with the citations in the document,
 - supports thousands of citation styles,
@@ -16,11 +17,12 @@ Citation Manager for JupyterLab:
 - integrates with the Zotero® service (Connector for Zotero) by default,
 - is modular in design, allowing for integration of other reference managers in the future.
 
-The data of each reference (a.k.a. *citable item*) is stored in the notebook metadata,
+The data of each reference (a.k.a. _citable item_) is stored in the notebook metadata,
 while a mapping between citation ID and the citable items is stored in the cell metadata.
+
 - storing full data of each citable item in the notebook enables:
-    - collaboration between multiple users with separate Zotero collections,
-    - retaining the data for citation which got removed from private collection.
+  - collaboration between multiple users with separate Zotero collections,
+  - retaining the data for citation which got removed from private collection.
 - storing mapping between citation and citable items in the cell metadata allows to copy cells between notebooks.
 
 ## Usage
@@ -68,6 +70,7 @@ and enable a quick preview of citation context and navigation to the relevant pl
 ### Auto-migrate existing citations
 
 When opening a notebook, the extension will automatically detect citations in the following formats:
+
 - cite2c, e.g. `<cite data-cite="itemID"></cite>` with associated notebook-level metadata,
 - DOI-links, e.g. `[(Krassowski et al, 2021)](https://doi.org/10.3389/fcell.2021.626821)`
   (the parentheses in the link label are used as an indicator distinguishing citations from non-citation DOI links)
@@ -108,9 +111,9 @@ To configure notebook to export citations to LaTeX:
 
 ## Requirements
 
-* JupyterLab >= 3.3
-* Modern browser (with ES 2019 support, e.g. Firefox 64+, or Chrome 73+)
-* [Zotero account](https://www.zotero.org/user/register)
+- JupyterLab >= 3.3
+- Modern browser (with ES 2019 support, e.g. Firefox 64+, or Chrome 73+)
+- [Zotero account](https://www.zotero.org/user/register)
 
 ## Install
 
@@ -127,7 +130,6 @@ To remove the extension, execute:
 ```bash
 pip uninstall jupyterlab-citation-manager
 ```
-
 
 ## Advanced Usage
 
@@ -282,11 +284,11 @@ with other works the CPAL 1.0 licence was adopted for re-distribution of `cirepr
 The Exhibit A of `citeproc-js` CPAL 1.0 licence is presented below for informational purposes:
 
 > EXHIBIT A. Common Public Attribution License Version 1.0.
-> “The contents of this file are subject to the Common Public Attribution License Version 1.0 (the “License”); you may not use this file except in compliance with the License. You may obtain a copy of the License at https://opensource.org/licenses/CPAL-1.0. The License is based on the Mozilla Public License Version 1.1 but Sections 14 and 15 have been added to cover use of software over a computer network and provide for limited attribution for the Original Developer. In addition, Exhibit A has been modified to be consistent with Exhibit B.
+> “The contents of this file are subject to the Common Public Attribution License Version 1.0 (the “License”); you may not use this file except in compliance with the License. You may obtain a copy of the License at https://opensource.org/license/cpal_1-0/ The License is based on the Mozilla Public License Version 1.1 but Sections 14 and 15 have been added to cover use of software over a computer network and provide for limited attribution for the Original Developer. In addition, Exhibit A has been modified to be consistent with Exhibit B.
 > Software distributed under the License is distributed on an “AS IS” basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License for the specific language governing rights and limitations under the License.
 > The Original Code is citeproc-js.
-> The Original Developer is not the Initial Developer and is __________. If left blank, the Original Developer is the Initial Developer.
+> The Original Developer is not the Initial Developer and is `________`. If left blank, the Original Developer is the Initial Developer.
 > The Initial Developer of the Original Code is Frank Bennett. All portions of the code written by Frank Bennett are Copyright (c) 2009-2015. All Rights Reserved.
-> Contributor ______________________.
+> Contributor `___________`.
 > Alternatively, the contents of this file may be used under the terms of the GNU AFFERO GENERAL PUBLIC LICENSE (the AGPLv3 License), in which case the provisions of AGPLv3 License are applicable instead of those above.
 > If you wish to allow use of your version of this file only under the terms of the AGPLv3 License and not to allow others to use your version of this file under the CPAL, indicate your decision by deleting the provisions above and replace them with the notice and other provisions required by the AGPLv3 License. If you do not delete the provisions above, a recipient may use your version of this file under either the CPAL or the AGPLv3 License.”

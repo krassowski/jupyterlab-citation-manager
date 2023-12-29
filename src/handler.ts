@@ -22,8 +22,8 @@ export async function requestAPI<T>(
   let response: Response;
   try {
     response = await ServerConnection.makeRequest(requestUrl, init, settings);
-  } catch (error) {
-    throw new ServerConnection.NetworkError(error);
+  } catch (error: unknown) {
+    throw new ServerConnection.NetworkError(error as TypeError);
   }
 
   const data = await response.json();
@@ -53,8 +53,8 @@ export async function fetchAPI(
   let response: Response;
   try {
     response = await ServerConnection.makeRequest(requestUrl, init, settings);
-  } catch (error) {
-    throw new ServerConnection.NetworkError(error);
+  } catch (error: unknown) {
+    throw new ServerConnection.NetworkError(error as TypeError);
   }
 
   const data = await response.text();

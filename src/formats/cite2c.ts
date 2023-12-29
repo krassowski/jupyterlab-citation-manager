@@ -54,7 +54,7 @@ class Cite2CFormat implements IAlternativeFormat<NotebookPanel> {
       return result;
     }
     markdownCells(document).map(cell => {
-      const text = cell.model.value.text;
+      const text = cell.model.sharedModel.getSource();
       const citationMatches = text.match(this.catchAllPattern);
       const bibliographyMatches = text.match(this.bibliographyPattern);
       result.citationsDetected += citationMatches ? citationMatches.length : 0;
@@ -70,8 +70,7 @@ class Cite2CFormat implements IAlternativeFormat<NotebookPanel> {
       return null;
     }
     return (
-      (document.model.metadata.get('cite2c') as Cite2C.INotebookMetadata) ||
-      null
+      (document.model.getMetadata('cite2c') as Cite2C.INotebookMetadata) || null
     );
   }
 
@@ -134,7 +133,7 @@ class Cite2CFormat implements IAlternativeFormat<NotebookPanel> {
 
     markdownCells(document).forEach(cell => {
       const citationsInCell = extractCitations(
-        cell.model.value.text,
+        cell.model.sharedModel.getSource(),
         {
           host: cell.node
         },
@@ -156,7 +155,7 @@ class Cite2CFormat implements IAlternativeFormat<NotebookPanel> {
           cite2cCitation.citationId = 'cite2c-' + cite2cCitation?.data?.cite;
           return cite2cCitation;
         });
-      let text = cell.model.value.text;
+      let text = cell.model.sharedModel.getSource();
       for (const citation of citationsInCell) {
         // TODO: escape?
         const pattern = this.citationSearchPattern(
@@ -190,7 +189,7 @@ class Cite2CFormat implements IAlternativeFormat<NotebookPanel> {
         this.bibliographyPattern,
         adapter.formatBibliography('')
       );
-      cell.model.value.text = text;
+      cell.model.sharedModel.setSource(text);
 
       adapter.addCitationMetadata(cell, citationsInCell);
     });
@@ -198,7 +197,7 @@ class Cite2CFormat implements IAlternativeFormat<NotebookPanel> {
     adapter.addFallbackDataFor('cite2c', cite2c.citations);
 
     if (result.failures.length === 0) {
-      document.model.metadata.delete('cite2c');
+      document.model.deleteMetadata('cite2c');
     } else {
       result.message = this.trans.__(
         'Migration could not be completed; the cite2c metadata were kept to allow manual migration'

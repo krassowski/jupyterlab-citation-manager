@@ -8,182 +8,144 @@ on:
 
 jobs:
   build:
-    name: Build
     runs-on: ubuntu-latest
+
     steps:
     - name: Checkout
-      uses: actions/checkout@v2
-    - name: Install node
-      uses: actions/setup-node@v1
-      with:
-       node-version: '14.x'
-    - name: Install Python
-      uses: actions/setup-python@v2
-      with:
-        python-version: '3.8'
-        architecture: 'x64'
-    
-    
-    - name: Setup pip cache
-      uses: actions/cache@v2
-      with:
-        path: ~/.cache/pip
-        key: pip-3.8-${{ hashFiles('package.json') }}
-        restore-keys: |
-          pip-3.8-
-          pip-
+      uses: actions/checkout@v3
 
-    - name: Get yarn cache directory path
-      id: yarn-cache-dir-path
-      run: echo "::set-output name=dir::$(yarn cache dir)"
-    - name: Setup yarn cache
-      uses: actions/cache@v2
-      id: yarn-cache # use this to check for `cache-hit` (`steps.yarn-cache.outputs.cache-hit != 'true'`)
-      with:
-        path: ${{ steps.yarn-cache-dir-path.outputs.dir }}
-        key: yarn-${{ hashFiles('**/yarn.lock') }}
-        restore-keys: |
-          yarn-
+    - name: Base Setup
+      uses: jupyterlab/maintainer-tools/.github/actions/base-setup@v1
 
     - name: Install dependencies
-      run: python -m pip install -U jupyterlab~=3.0 check-manifest
-    - name: Install extension
+      run: python -m pip install -U "jupyterlab>=4.0.0,<5"
+
+    - name: Lint the extension
       run: |
         set -eux
         jlpm
-        python -m pip install .
-        jupyter labextension list 2>&1 | grep -ie "jupyterlab-citation-manager.*OK"
-
-    - name: Run browser check test
-      run: |
-        set -eux
-        python -m jupyterlab.browser_check
-
-    - name: Check style
-      run: |
-        set -eux
-        jlpm run eslint:check
+        jlpm run lint:check
 
     - name: Build the extension
       run: |
         set -eux
-        check-manifest -v
+        python -m pip install .[test]
+
+        pytest -vv -r ap --cov jupyterlab_citation_manager
+        jupyter server extension list
+        jupyter server extension list 2>&1 | grep -ie "jupyterlab_citation_manager.*OK"
+
+        jupyter labextension list
+        jupyter labextension list 2>&1 | grep -ie "jupyterlab-citation-manager.*OK"
+        python -m jupyterlab.browser_check
+
+    - name: Package the extension
+      run: |
+        set -eux
 
         pip install build
-        python -m build --sdist
-        cp dist/*.tar.gz extension.tar.gz
-        pip uninstall -y extension jupyterlab
-        rm -rf extension
-    - uses: actions/upload-artifact@v2
+        python -m build
+        pip uninstall -y "jupyterlab_citation_manager" jupyterlab
+
+    - name: Upload extension packages
+      uses: actions/upload-artifact@v3
       with:
-        name: extension-sdist
-        path: extension.tar.gz
+        name: extension-artifacts
+        path: dist/jupyterlab_citation_manager*
+        if-no-files-found: error
 
   test_isolated:
-    name: Test in isolated environment
     needs: build
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout
-      uses: actions/checkout@v2
     - name: Install Python
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v4
       with:
-        python-version: '3.8'
+        python-version: '3.9'
         architecture: 'x64'
-    - uses: actions/download-artifact@v2
+    - uses: actions/download-artifact@v3
       with:
-        name: extension-sdist
+        name: extension-artifacts
     - name: Install and Test
       run: |
         set -eux
         # Remove NodeJS, twice to take care of system and locally installed node versions.
         sudo rm -rf $(which node)
         sudo rm -rf $(which node)
-        pip install extension.tar.gz
-        pip install jupyterlab
+
+        pip install "jupyterlab>=4.0.0,<5" jupyterlab_citation_manager*.whl
+
+
+        jupyter server extension list
+        jupyter server extension list 2>&1 | grep -ie "jupyterlab_citation_manager.*OK"
+
+        jupyter labextension list
         jupyter labextension list 2>&1 | grep -ie "jupyterlab-citation-manager.*OK"
-        python -m jupyterlab.browser_check --no-chrome-test
+        python -m jupyterlab.browser_check --no-browser-test
 
-  test_python:
-    name: Run Python tests
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v2
-      - name: Install Python
-        uses: actions/setup-python@v2
-        with:
-          python-version: '3.8'
-          architecture: 'x64'
-      - name: Install testing dependencies
-        run: python -m pip install pytest jupyter_server
-      - name: Copy package.json
-        run: |
-          mkdir jupyterlab_citation_manager/labextension
-          cp package.json jupyterlab_citation_manager/labextension/
-      - name: Run Python tests
-        run: |
-          set -eux
-          python3 -m pytest
-
-  ui-test:
+  integration-tests:
     name: Integration tests
+    needs: build
     runs-on: ubuntu-latest
 
-    needs: build
+    env:
+      PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}/pw-browsers
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v2
-      - name: Install node
-        uses: actions/setup-node@v1
-        with:
-          node-version: '14.x'
-      - uses: actions/download-artifact@v2
-        with:
-          name: extension-sdist
-      - name: Setup Python 3.9
-        uses: actions/setup-python@v2
-        with:
-          python-version: 3.9
-          architecture: 'x64'
+    - name: Checkout
+      uses: actions/checkout@v3
 
-      - name: Install dependencies
-        run: |
-          pip install extension.tar.gz
-          pip install jupyterlab~=3.0
+    - name: Base Setup
+      uses: jupyterlab/maintainer-tools/.github/actions/base-setup@v1
 
-      - name: Prepare for UI tests
-        run: |
-          jlpm
-          jlpm install:browser
-          jlpm start-jlab:detached
-        working-directory: ui-tests
+    - name: Download extension package
+      uses: actions/download-artifact@v3
+      with:
+        name: extension-artifacts
 
-      - name: Wait for JupyterLab
-        uses: ifaxity/wait-on-action@31409304f67f28ae9559d3646ac9b59f78c6f0ba
-        with:
-          resource: http-get://localhost:8888/lab
-          timeout: 360000
+    - name: Install the extension
+      run: |
+        set -eux
+        python -m pip install "jupyterlab>=4.0.0,<5" jupyterlab_citation_manager*.whl
 
-      - name: Run UI tests
-        run: |
-          jlpm run test
-        working-directory: ui-tests
+    - name: Install dependencies
+      working-directory: ui-tests
+      env:
+        YARN_ENABLE_IMMUTABLE_INSTALLS: 0
+        PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: 1
+      run: jlpm install
 
-      - name: Upload UI Test artifacts
-        if: always()
-        uses: actions/upload-artifact@v2
-        with:
-          name: ui-test-output
-          path: |
-            ui-tests/playwright-report
-            ui-tests/test-results
+    - name: Set up browser cache
+      uses: actions/cache@v3
+      with:
+        path: |
+          ${{ github.workspace }}/pw-browsers
+        key: ${{ runner.os }}-${{ hashFiles('ui-tests/yarn.lock') }}
 
-      - name: Stop JupyterLab
-        if: always()
-        run: |
-          killall jupyter-lab
-        working-directory: ui-tests
+    - name: Install browser
+      run: jlpm playwright install chromium
+      working-directory: ui-tests
+
+    - name: Execute integration tests
+      working-directory: ui-tests
+      run: |
+        jlpm playwright test
+
+    - name: Upload Playwright Test report
+      if: always()
+      uses: actions/upload-artifact@v3
+      with:
+        name: jupyterlab_citation_manager-playwright-tests
+        path: |
+          ui-tests/test-results
+          ui-tests/playwright-report
+
+  check_links:
+    name: Check Links
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v3
+      - uses: jupyterlab/maintainer-tools/.github/actions/base-setup@v1
+      - uses: jupyterlab/maintainer-tools/.github/actions/check-links@v1

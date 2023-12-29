@@ -1,5 +1,10 @@
 import IMatchResult = StringExt.IMatchResult;
-import { IStylePreviewProvider, IStyle, IStylePreview } from '../types';
+import {
+  IStylePreviewProvider,
+  IStyle,
+  IStylePreview,
+  IPreviewNotAvailable
+} from '../types';
 import { anonymousMark, IOption, ModalSelector } from './selector';
 import { TranslationBundle } from '@jupyterlab/translation';
 import { StringExt } from '@lumino/algorithm';
@@ -166,9 +171,9 @@ export class StyleSelector extends ModalSelector<
           trans={this.trans}
         />
       );
-    } catch (availability) {
-      if (availability.reason) {
-        return <div>{availability.reason}</div>;
+    } catch (availability: unknown) {
+      if ((availability as IPreviewNotAvailable).reason) {
+        return <div>{(availability as IPreviewNotAvailable).reason}</div>;
       } else {
         return <div>{this.trans.__('Preview not available')}</div>;
       }

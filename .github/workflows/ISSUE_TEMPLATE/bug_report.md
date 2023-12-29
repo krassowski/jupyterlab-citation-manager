@@ -34,9 +34,9 @@ https://jupyterlab.readthedocs.io/en/latest/getting_started/issue.html
 
 <!--Complete the following for context, and add any other relevant context-->
 
-- Operating System and version: 
-- Browser and version: 
-- JupyterLab version: 
+- Operating System and version:
+- Browser and version:
+- JupyterLab version:
 
 <details><summary>Required: installed server extensions</summary>
 <pre>

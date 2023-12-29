@@ -205,7 +205,10 @@ export abstract class Selector<O, M> extends ReactWidget {
             <searchIcon.react className={'cm-SearchIcon'} />
           </div>
         </div>
-        <UseSignal signal={this._optionsChanged}>
+        <UseSignal
+          signal={this._optionsChanged}
+          initialArgs={this._filteredOptions}
+        >
           {renderOptions.bind(this)}
         </UseSignal>
       </div>
@@ -303,6 +306,9 @@ export abstract class Selector<O, M> extends ReactWidget {
    * Handle the `'keydown'` event for the widget.
    */
   protected _evtKeydown(event: KeyboardEvent): void {
+    if (!event.target || !this.node.contains(event.target as Node)) {
+      return;
+    }
     switch (event.keyCode) {
       case 13: // Enter.
         this.acceptOption();
@@ -338,6 +344,7 @@ export abstract class Selector<O, M> extends ReactWidget {
     this.setActiveIndex(0);
     this.options = options;
     this._filteredOptions = this.transformOptions(this.getInitialOptions());
+    // ensure that items are updated if the react root was already attached
     this._optionsChanged.emit(this._filteredOptions);
     // set index on new options to zero
     this.setActiveIndex(0);
@@ -365,14 +372,14 @@ export abstract class Selector<O, M> extends ReactWidget {
    */
   protected onAfterAttach(msg: Message): void {
     super.onAfterAttach(msg);
-    this.node.addEventListener('keydown', this, true);
+    document.addEventListener('keydown', this, true);
   }
 
   /**
    *  A message handler invoked on an `'after-detach'` message.
    */
   protected onAfterDetach(msg: Message): void {
-    this.node.removeEventListener('keydown', this, true);
+    document.removeEventListener('keydown', this, true);
   }
 }
 
@@ -401,11 +408,13 @@ export abstract class ModalSelector<O, M> extends Selector<O, M> {
   }
 
   getItem(options: O[]): Promise<O> {
+    const promise = super.getItem(options);
+    // only show after updating initial options in parent implementation
     this.show();
     if (!this.isAttached) {
       this.attach();
     }
-    return super.getItem(options);
+    return promise;
   }
 
   acceptOption(option?: O): void {
