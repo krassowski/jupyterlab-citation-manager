@@ -205,7 +205,10 @@ export abstract class Selector<O, M> extends ReactWidget {
             <searchIcon.react className={'cm-SearchIcon'} />
           </div>
         </div>
-        <UseSignal signal={this._optionsChanged} initialArgs={this._filteredOptions}>
+        <UseSignal
+          signal={this._optionsChanged}
+          initialArgs={this._filteredOptions}
+        >
           {renderOptions.bind(this)}
         </UseSignal>
       </div>
@@ -304,7 +307,7 @@ export abstract class Selector<O, M> extends ReactWidget {
    */
   protected _evtKeydown(event: KeyboardEvent): void {
     if (!event.target || !this.node.contains(event.target as Node)) {
-        return;
+      return;
     }
     switch (event.keyCode) {
       case 13: // Enter.
