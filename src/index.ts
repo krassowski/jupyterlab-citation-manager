@@ -89,7 +89,7 @@ class StylesManager {
   ) {
     this.selector = new StyleSelector(trans, previewProvider);
     this.styles = [];
-    // read the list of languages from the external extension
+    // read the list of styles from the external extension
     this.isReady = this.fetchStylesList();
   }
 
