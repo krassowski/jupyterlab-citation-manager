@@ -65,6 +65,7 @@
         "watch:labextension": "jupyter labextension watch .",
         "watch:src": "tsc -w"
     },
+    "packageManager": "yarn@3.5.0",
     "dependencies": {
         "@jupyterlab/application": "^4.0.9",
         "@jupyterlab/settingregistry": "^4.0.9",
